@@ -3,14 +3,14 @@ import { OpenAI } from "openai";
 export class ChatbotService {
   private ai: OpenAI;
 
-  constructor(apiKey: string) {
-    this.ai = new OpenAI({ apiKey });
+  constructor() {
+    this.ai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
   }
 
   async sendMessage(prompt: string): Promise<string> {
     try {
       const completion = await this.ai.completions.create({
-        model: "text-davinci-003", // Use the appropriate model for your case
+        model: "gpt-3.5-turbo",
         prompt,
         max_tokens: 150,
         temperature: 0.7,

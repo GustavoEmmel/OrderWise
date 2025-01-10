@@ -4,7 +4,9 @@ import dotenv from "dotenv";
 import { AppDataSource } from "./config/database";
 import { initializeWebSocketServer } from "./plugins/websocket-server";
 import healthRouter from "./routes/health";
+import chatRouter from "./routes/chat";
 import rateLimit from "express-rate-limit";
+import { orderServiceProvider } from "./middlewares/orderServiceProvider";
 
 dotenv.config();
 
@@ -26,7 +28,6 @@ app.use(limiter);
 AppDataSource.initialize()
   .then(() => {
     console.log("Database connected");
-    app.set("dataSource", AppDataSource); // Attach AppDataSource to app
   })
   .catch((err) => console.error("Database connection error:", err));
 
@@ -35,8 +36,10 @@ initializeWebSocketServer(4000);
 
 // Middleware
 app.use(express.json());
+app.use(orderServiceProvider); // Use the service provider middleware
 
 app.use("/health", healthRouter);
+app.use("/chat", chatRouter);
 
 // Start Server
 app.listen(PORT, () => {

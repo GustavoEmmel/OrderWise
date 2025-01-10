@@ -5,18 +5,21 @@
   "scripts": {
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
-    "check-db": "docker exec orderwise-postgres pg_isready -U youruser",
-    "wait-for-db": "bash -c 'until docker exec orderwise-postgres pg_isready -U youruser; do echo \"Waiting for the database...\"; sleep 2; done;'",
-    "dev": "npm run docker:up && npm run wait-for-db && ts-node-dev --respawn --transpile-only src/index.ts",
+    "check-db": "docker exec orderwise-postgres pg_isready -U admin",
+    "wait-for-db": "bash -c 'until docker exec orderwise-postgres pg_isready -U admin; do echo \"Waiting for the database...\"; sleep 2; done;'",
+    "dev": "npm run docker:up && npm run wait-for-db && npm run migrate && ts-node-dev --respawn --transpile-only src/index.ts",
     "start": "npm run docker:up && node dist/index.js",
     "build": "tsc",
-    "test": "vitest"
+    "test": "vitest --no-file-parallelism --watch=false",
+    "lint": "eslint .",
+    "migrate": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:run -d ./typeorm.config.ts"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@huggingface/inference": "^2.8.1",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "express-rate-limit": "^7.5.0",
@@ -24,13 +27,25 @@
     "pg": "^8.13.1",
     "reflect-metadata": "^0.2.2",
     "typeorm": "^0.3.20",
-    "ws": "^8.18.0"
+    "ws": "^8.18.0",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@eslint/js": "^9.17.0",
     "@types/express": "^5.0.0",
     "@types/node": "^22.10.5",
     "@types/ws": "^8.5.13",
+    "eslint": "^8.57.1",
+    "eslint-config-standard": "^17.1.0",
+    "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-n": "^16.6.2",
+    "eslint-plugin-promise": "^6.6.0",
+    "globals": "^15.14.0",
+    "ts-mockito": "^2.6.1",
+    "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.19.1",
+    "vitest": "^2.1.8"
   }
 }

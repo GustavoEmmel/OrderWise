@@ -4,24 +4,49 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  ManyToOne,
+  OneToMany,
 } from "typeorm";
+import { User } from "./user";
+import { OrderItem } from "./orderItem";
+
+export enum OrderStatus {
+  OPEN = "open",
+  IN_PROGRESS = "in_progress",
+  COMPLETED = "completed",
+  CANCEL = "cancel",
+  REFUNDED = "refunded",
+}
 
 @Entity("orders")
 export class Order {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Column()
-  userId!: string;
+  @ManyToOne(() => User, (user) => user.id)
+  user!: number;
 
-  @Column()
-  item!: string;
+  @Column("decimal", { nullable: true })
+  price?: number;
 
-  @Column("decimal")
-  price!: number;
+  @Column("decimal", { nullable: true })
+  refundAmount?: number;
 
-  @Column("text", { nullable: true })
-  status!: string;
+  @Column({
+    type: "varchar", // even thought its an enum, its better to store it as string in case we need to add another one latter
+    enum: OrderStatus,
+    default: OrderStatus.OPEN,
+  })
+  status!: OrderStatus;
+
+  @Column({ type: "timestamp", nullable: true })
+  expectedDeliveryDate?: Date;
+
+  @Column({ type: "timestamp", nullable: true })
+  actualDeliveryDate?: Date;
+
+  @OneToMany(() => OrderItem, (orderItem) => orderItem.order)
+  orderItems?: OrderItem[];
 
   @CreateDateColumn()
   createdAt!: Date;
