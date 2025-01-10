@@ -2,6 +2,10 @@ import { Repository, In } from "typeorm";
 import { Order, OrderStatus } from "../entities/order";
 import { OrderItem } from "../entities/orderItem";
 
+/**
+ * Service to manage orders and their related operations.
+ * Designed to minimize user input while interacting with the chatbot.
+ */
 export class OrderService {
   private orderRepository: Repository<Order>;
   private orderItemRepository: Repository<OrderItem>;
@@ -11,6 +15,11 @@ export class OrderService {
     this.orderItemRepository = orderItemRepository;
   }
 
+  /**
+   * Fetches an open order for the user or creates a new one if none exists.
+   * @param userId - The ID of the user.
+   * @returns The open order.
+   */
   async getOrCreateOpenOrder(userId: number): Promise<Order> {
     return await this.orderRepository.manager.transaction(async (transactionalEntityManager) => {
       const existingOrder = await this.getUserActiveOrder(userId);
@@ -25,6 +34,12 @@ export class OrderService {
     });
   }
 
+  /**
+   * Adds an item to the user's open order. If no open order exists, a new one is created.
+   * @param userId - The ID of the user.
+   * @param orderItemData - Data for the order item.
+   * @returns The newly added order item.
+   */
   async addOrderItem(
     userId: number,
     orderItemData: Omit<OrderItem, "id" | "order" | "createdAt" | "updatedAt">
@@ -32,6 +47,7 @@ export class OrderService {
     return await this.orderRepository.manager.transaction(async (transactionalEntityManager) => {
       const order = await this.getOrCreateOpenOrder(userId);
 
+      // Calculate the final price of the item.
       orderItemData.finalPrice = orderItemData.unitPrice * orderItemData.quantity;
 
       const orderItem = this.orderItemRepository.create({
@@ -39,8 +55,8 @@ export class OrderService {
         order,
       });
 
+      // Save the order item and update the order status.
       await transactionalEntityManager.save(orderItem);
-      // Set order to open again
       order.status = OrderStatus.OPEN;
 
       if (!order.orderItems) {
@@ -53,6 +69,13 @@ export class OrderService {
     });
   }
 
+  /**
+   * Modifies an existing item in the user's open order or replaces it with a new item.
+   * @param userId - The ID of the user.
+   * @param itemName - Name of the item to modify.
+   * @param newItemData - Data for the new or updated item.
+   * @returns The modified or newly added order item.
+   */
   async modifyOrderItem(
     userId: number,
     itemName: string,
@@ -65,7 +88,7 @@ export class OrderService {
         throw new Error("No items found in order to modify");
       }
 
-      // Find and remove the existing order item with the specified itemName (case insensitive)
+      // Find and remove the existing order item by name.
       const existingItemIndex = order.orderItems.findIndex(
         (item) => item.name.toLowerCase() === itemName.toLowerCase()
       );
@@ -77,13 +100,12 @@ export class OrderService {
 
       newItemData.finalPrice = newItemData.unitPrice * newItemData.quantity;
 
-      // Add the new order item to the order
+      // Add the new item to the order.
       const newOrderItem = this.orderItemRepository.create({
         ...newItemData,
         order,
       });
 
-      // Set order to open again
       order.status = OrderStatus.OPEN;
       order.orderItems.push(newOrderItem);
       await transactionalEntityManager.save(order);
@@ -92,6 +114,12 @@ export class OrderService {
     });
   }
 
+  /**
+   * Updates the status of an order.
+   * @param orderId - The ID of the order.
+   * @param status - The new status of the order.
+   * @returns The updated order.
+   */
   async updateOrderStatus(orderId: number, status: OrderStatus): Promise<Order> {
     return await this.orderRepository.manager.transaction(async (transactionalEntityManager) => {
       if (status === OrderStatus.COMPLETED) {
@@ -106,6 +134,11 @@ export class OrderService {
     });
   }
 
+  /**
+   * Processes a refund for the user's most recent completed or in-progress order.
+   * @param userId - The ID of the user.
+   * @returns The refunded order.
+   */
   async refund(userId: number): Promise<Order> {
     return await this.orderRepository.manager.transaction(async (transactionalEntityManager) => {
       const order = await transactionalEntityManager.findOne(Order, {
@@ -133,6 +166,11 @@ export class OrderService {
     });
   }
 
+  /**
+   * Fetches the user's active order (open or in progress).
+   * @param userId - The ID of the user.
+   * @returns The active order, if any.
+   */
   async getUserActiveOrder(userId: number): Promise<Order | null> {
     return await this.orderRepository.findOne({
       where: {
@@ -143,6 +181,11 @@ export class OrderService {
     });
   }
 
+  /**
+   * Checks if the user has an open order with items.
+   * @param userId - The ID of the user.
+   * @returns True if an open order with items exists; false otherwise.
+   */
   async hasOpenOrderWithItems(userId: number): Promise<boolean> {
     const order = await this.orderRepository.findOne({
       where: {
@@ -155,6 +198,11 @@ export class OrderService {
     return !!order && !!order.orderItems && order.orderItems.length > 0;
   }
 
+  /**
+   * Closes the user's open order and transitions it to in-progress status.
+   * @param userId - The ID of the user.
+   * @returns The closed order.
+   */
   async closeOrder(userId: number): Promise<Order> {
     return await this.orderRepository.manager.transaction(async (transactionalEntityManager) => {
       const order = await transactionalEntityManager.findOne(Order, {
@@ -173,13 +221,11 @@ export class OrderService {
         throw new Error("No items found in order to close");
       }
 
-      // Set the order status to IN_PROGRESS
+      // Transition the order to in-progress and calculate the total price.
       order.status = OrderStatus.IN_PROGRESS;
-
-      // Calculate the total price based on the finalPrice of order items
       order.price = order.orderItems.reduce((total, item) => total + Number(item.finalPrice), 0);
 
-      // Get the maximum timeToPrepare in minutes and sum to the current time
+      // Calculate the expected delivery time based on preparation time.
       const maxTimeToPrepare = Math.max(...order.orderItems.map((item) => item.timeToPrepare));
       const expectedDeliveryDate = new Date();
       expectedDeliveryDate.setMinutes(expectedDeliveryDate.getMinutes() + maxTimeToPrepare);
