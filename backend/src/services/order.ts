@@ -42,30 +42,47 @@ export class OrderService {
    */
   async addOrderItem(
     userId: number,
-    orderItemData: Omit<OrderItem, "id" | "order" | "createdAt" | "updatedAt">
-  ): Promise<OrderItem> {
+    orderItemData:
+      | Omit<OrderItem, "id" | "order" | "createdAt" | "updatedAt">
+      | Omit<OrderItem, "id" | "order" | "createdAt" | "updatedAt">[]
+  ): Promise<OrderItem | OrderItem[]> {
     return await this.orderRepository.manager.transaction(async (transactionalEntityManager) => {
       const order = await this.getOrCreateOpenOrder(userId);
 
-      // Calculate the final price of the item.
-      orderItemData.finalPrice = orderItemData.unitPrice * orderItemData.quantity;
+      const orderItems = Array.isArray(orderItemData) ? orderItemData : [orderItemData];
 
-      const orderItem = this.orderItemRepository.create({
-        ...orderItemData,
-        order,
-      });
+      const savedOrderItems: OrderItem[] = [];
 
-      // Save the order item and update the order status.
-      await transactionalEntityManager.save(orderItem);
+      console.log("orderItems", orderItems);
+      console.log("orderItemData", orderItemData);
+
+      for (const itemData of orderItems) {
+        console.log("orderItemData", itemData);
+
+        // Calculate the final price of the item.
+        itemData.finalPrice = itemData.unitPrice * itemData.quantity;
+
+        const orderItem = this.orderItemRepository.create({
+          ...itemData,
+          order,
+        });
+
+        console.log("orderItem", orderItem);
+
+        // Save the order item and update the order status.
+        await transactionalEntityManager.save(orderItem);
+        savedOrderItems.push(orderItem);
+      }
+
       order.status = OrderStatus.OPEN;
 
       if (!order.orderItems) {
         order.orderItems = [];
       }
-      order.orderItems.push(orderItem);
+      order.orderItems.push(...savedOrderItems);
       await transactionalEntityManager.save(order);
 
-      return orderItem;
+      return Array.isArray(orderItemData) ? savedOrderItems : savedOrderItems[0];
     });
   }
 

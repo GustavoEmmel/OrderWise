@@ -4,16 +4,12 @@ import { chatAgent } from "../services/chatAgent";
 const router = Router();
 
 router.post("/", async (req: Request, res: Response) => {
-  // const chat = req.app.get("chatbotService");
   const orderService = req.orderService;
 
-  console.log("req.body", req.body);
-
   try {
-    const messages = [{ role: "user", content: "I want to order from McDonald's." }];
+    const messages = req.body.messages;
 
     const response = await chatAgent(messages, orderService);
-    // console.log("process.env.OPENAI_API_KEY", process.env.OPENAI_API_KEY);
     console.log("response", response);
 
     res.json({ response });
