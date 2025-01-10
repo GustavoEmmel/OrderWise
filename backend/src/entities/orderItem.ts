@@ -20,7 +20,7 @@ export class OrderItem {
   name!: string;
 
   @Column("text", { nullable: true })
-  description!: string;
+  description?: string;
 
   @Column("int")
   quantity!: number;
