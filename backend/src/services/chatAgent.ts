@@ -9,6 +9,21 @@ const openai = new OpenAI({
 });
 
 /**
+ * Finds a menu item by its name from menuData.
+ * @param itemName - The name of the item to find.
+ * @returns The menu item if found, or null if not found.
+ */
+function findMenuItem(itemName: string) {
+  for (const restaurant of Object.values(menuData)) {
+    const item = restaurant.items.find(
+      (menuItem) => menuItem.name.toLowerCase() === itemName.toLowerCase()
+    );
+    if (item) return item;
+  }
+  return null;
+}
+
+/**
  * Generates a system prompt for AI requests.
  * @param task - Description of the AI task.
  * @returns A formatted system prompt string.
@@ -39,30 +54,51 @@ function hasSimilarWord(input: string, target: string): boolean {
 }
 
 /**
- * Extracts menu items and full details from the user's message using AI.
+ * Uses AI to interpret the user's intent from the given message.
  * @param userMessage - The user's input message.
- * @returns An array of items with their full details (name, quantity, description, price, timeToPrepare).
+ * @returns The interpreted intent and relevant details as structured data.
  */
-async function extractOrderItemsAI(
-  userMessage: string
-): Promise<
-  { name: string; quantity: number; description: string; price: number; timeToPrepare: number }[]
-> {
-  console.log("[DEBUG] Extracting items using AI for user message:", userMessage);
+async function detectIntentAI(userMessage: string): Promise<{
+  intent: string;
+  details: {
+    action?: "add" | "remove" | "replace";
+    items: Array<{
+      name: string;
+      quantity?: number;
+      replacement?: {
+        name: string;
+        quantity?: number;
+        description: string;
+        price: number;
+        timeToPrepare: number;
+      };
+    }>;
+  };
+}> {
+  console.log("[DEBUG] Interpreting user intent using AI:", userMessage);
 
   const systemPrompt = generateSystemPrompt(`
-Extract menu items and quantities from the user's message. Return the result as a JSON array in the format:
-[
-  {
-    "name": "<item name>",
-    "quantity": <quantity>,
-    "description": "<item description>",
-    "price": <item price>,
-    "timeToPrepare": <time to prepare>
+Understand the user's intent regarding their order. Possible intents include:
+- "place_order": When the user wants to add items to their order.
+- "update_order": When the user wants to modify their order (add, remove, or replace items).
+- "finalize_order": When the user wants to confirm and finalize their order.
+- "ask_status": When the user asks about the status, progress, or details of their order.
+- "refund_request": When the user requests a refund for their order.
+
+For each intent, return a JSON object like this:
+{
+  "intent": "<intent>",
+  "details": {
+    "action": "<add|remove|replace>",
+    "items": [
+      {
+        "name": "<item name>",
+        "quantity": <quantity>,
+        "replacement": <if replacing, include new item details as { name, quantity, description, price, timeToPrepare }>
+      }
+    ]
   }
-]
-If an item is not explicitly mentioned with a quantity, assume quantity = 1.
-If no items match, return an empty array.
+}
 `);
 
   try {
@@ -74,17 +110,36 @@ If no items match, return an empty array.
       ],
     });
 
-    const extractedItems = JSON.parse(response.choices[0]?.message?.content || "[]");
-    console.log("[DEBUG] Extracted items from AI:", extractedItems);
-    return extractedItems;
+    const rawDetails = JSON.parse(response.choices[0]?.message?.content || "{}");
+    console.log("[DEBUG] Raw interpreted intent and details:", rawDetails);
+
+    const items = Array.isArray(rawDetails.details?.items) ? rawDetails.details.items : [];
+
+    const interpretation = {
+      intent: rawDetails.intent || "unknown",
+      details: {
+        action: rawDetails.details?.action || undefined,
+        items,
+      },
+    };
+
+    console.log("[DEBUG] Normalized intent and details:", interpretation);
+    return interpretation;
   } catch (error) {
-    console.error("[ERROR] Failed to extract items using AI:", error);
-    return [];
+    console.error("[ERROR] Failed to interpret intent using AI:", error);
+
+    // Fallback for simple finalization confirmations
+    if (/yes|finalize|confirm/i.test(userMessage.toLowerCase())) {
+      return { intent: "finalize_order", details: { items: [] } };
+    }
+
+    return { intent: "unknown", details: { items: [] } };
   }
 }
 
 /**
- * Handles chatbot interactions, placing orders, managing active orders, processing refunds, answering order status questions, and finalizing orders.
+ * Handles chatbot interactions, placing orders, managing active orders, modifying orders,
+ * processing refunds, answering order status questions, and finalizing orders.
  * @param messages - The conversation history with user messages.
  * @param orderService - The instance of OrderService for managing orders.
  * @param userId - Optional user ID to associate the order.
@@ -99,46 +154,9 @@ export async function chatAgent(
 
   console.log("[DEBUG] Received user message:", userMessage);
 
-  // Check if the user is asking about order status
-  if (/where|when|status|arrive|complete|progress|order/i.test(userMessage.toLowerCase())) {
-    console.log("[DEBUG] User is asking about order status.");
-
-    // Retrieve the user's active order
-    const activeOrder = await orderService.getUserActiveOrder(userId);
-
-    if (!activeOrder) {
-      console.log("[DEBUG] No active order found.");
-      return { reply: "You don't have an active order at the moment." };
-    }
-
-    // Generate a response based on the order status and details
-    const { status, expectedDeliveryDate } = activeOrder;
-
-    switch (status) {
-      case OrderStatus.OPEN:
-        return {
-          reply: `Your order is currently open. Please finalize it to proceed.`,
-        };
-
-      case OrderStatus.IN_PROGRESS: {
-        const timeLeft = expectedDeliveryDate
-          ? Math.max(Math.ceil((new Date(expectedDeliveryDate).getTime() - Date.now()) / 60000), 0)
-          : "unknown";
-        return {
-          reply: `Your order is in progress. It is expected to arrive in approximately ${timeLeft} minutes.`,
-        };
-      }
-
-      default:
-        return {
-          reply: "Your order is in an unknown state. Please contact support for assistance.",
-        };
-    }
-  }
-
-  // Check if the user wants a refund
+  // Check for a refund request using Levenshtein as fallback
   if (hasSimilarWord(userMessage, "refund")) {
-    console.log("[DEBUG] Refund request detected.");
+    console.log("[DEBUG] Refund request detected using Levenshtein.");
 
     try {
       const refundedOrder = await orderService.refund(userId, userMessage);
@@ -151,66 +169,202 @@ export async function chatAgent(
     }
   }
 
-  // Check if the user wants to finalize the order
-  if (/yes|finalize|confirm/i.test(userMessage.toLowerCase())) {
-    console.log("[DEBUG] User wants to finalize the order");
+  // Interpret intent using AI
+  const { intent, details } = await detectIntentAI(userMessage);
 
-    // Validate if the user has an open order with items
-    const hasOpenOrder = await orderService.hasOpenOrderWithItems(userId);
-    if (!hasOpenOrder) {
-      console.log("[DEBUG] No open order with items found for the user.");
-      return {
-        reply: "You don't have an open order with items. Please add items to your order first.",
-      };
-    }
+  switch (intent) {
+    case "place_order": {
+      const items = details?.items || [];
+      console.log("[DEBUG] Detected intent: place_order with items:", items);
 
-    // Finalize the order if validation passes
-    try {
-      await orderService.closeOrder(userId);
-      return { reply: "Your order has been finalized. Thank you!" };
-    } catch (error) {
-      console.error("[ERROR] Failed to finalize the order:", error);
-      return { reply: "Sorry, we couldn't finalize your order. Please try again." };
-    }
-  }
+      if (items.length === 0) {
+        return { reply: "I couldn't detect any items in your order. Could you clarify?" };
+      }
 
-  // Use AI to extract items
-  const extractedItems = await extractOrderItemsAI(userMessage);
+      for (const item of items) {
+        const menuItem = findMenuItem(item.name);
+        if (!menuItem) {
+          console.warn(`[WARN] Menu item not found: ${item.name}`);
+          continue;
+        }
 
-  if (extractedItems.length > 0) {
-    console.log("[DEBUG] Detected items for order:", extractedItems);
-    try {
-      // Use for...of loop for sequential item creation
-      for (const item of extractedItems) {
-        console.log(`[DEBUG] Adding item to order: ${item.name}, quantity: ${item.quantity}`);
         await orderService.addOrderItem(userId, {
-          name: item.name,
-          unitPrice: item.price,
-          quantity: item.quantity,
-          finalPrice: item.price * item.quantity, // Calculate the final price
-          timeToPrepare: item.timeToPrepare,
+          name: menuItem.name,
+          unitPrice: menuItem.price,
+          quantity: item.quantity || 1,
+          finalPrice: menuItem.price * (item.quantity || 1),
+          timeToPrepare: menuItem.timeToPrepare,
         });
       }
 
-      // Fetch active order data
-      const activeOrder = await orderService.getUserActiveOrder(userId);
-      if (activeOrder && activeOrder.orderItems && activeOrder.orderItems.length > 0) {
+      const hasOpenOrder = await orderService.hasOpenOrderWithItems(userId);
+      if (hasOpenOrder) {
+        const activeOrder = await orderService.getUserActiveOrder(userId);
         const orderItemsList = activeOrder
-          .orderItems!.map((item) => `${item.quantity} ${item.name}`)
+          ?.orderItems!.map((item) => `${item.quantity}x ${item.name}`)
           .join(", ");
-        return { reply: `You have ${orderItemsList}. Finalize?` };
-      } else {
-        console.warn("[WARN] Items added, but no active order found.");
-        return { reply: "Your items have been added, but no active order was found." };
+        return {
+          reply: `You have ${orderItemsList}. Would you like to finalize the order?`,
+        };
       }
-    } catch (error) {
-      console.error("[ERROR] Failed to add items to the order:", error);
-      return { reply: "Sorry, we couldn't add items to your order. Please try again." };
-    }
-  }
 
-  // Fallback response if no items are detected
-  return {
-    reply: "I'm sorry, I couldn't detect any items in your message. Can you try rephrasing?",
-  };
+      return { reply: "Your order has been placed successfully." };
+    }
+
+    case "update_order": {
+      console.log("[DEBUG] Detected intent: update_order with items:", details.items);
+
+      const activeOrder = await orderService.getUserActiveOrder(userId);
+      if (!activeOrder || !activeOrder.orderItems || activeOrder.orderItems.length === 0) {
+        return { reply: "You don't have an active order to update. Please place an order first." };
+      }
+
+      for (const item of details.items) {
+        const menuItem = findMenuItem(item.name);
+        if (!menuItem) {
+          console.warn(`[WARN] Menu item not found: ${item.name}`);
+          continue;
+        }
+
+        if (details.action === "remove") {
+          console.log(`[DEBUG] Removing item: ${item.name}`);
+          // Decrement quantity or set to 0
+          const existingItem = activeOrder.orderItems.find(
+            (orderItem) => orderItem.name.toLowerCase() === item.name.toLowerCase()
+          );
+
+          if (existingItem) {
+            const updatedQuantity = Math.max(existingItem.quantity - (item.quantity || 1), 0);
+            await orderService.modifyOrderItem(userId, item.name, {
+              name: existingItem.name,
+              unitPrice: existingItem.unitPrice,
+              quantity: updatedQuantity,
+              finalPrice: updatedQuantity * existingItem.unitPrice,
+              timeToPrepare: existingItem.timeToPrepare,
+            });
+          } else {
+            console.warn(`[WARN] Item to remove not found in the active order: ${item.name}`);
+          }
+        } else if (details.action === "add") {
+          console.log(`[DEBUG] Adding item: ${item.name}`);
+          await orderService.addOrderItem(userId, {
+            name: menuItem.name,
+            unitPrice: menuItem.price,
+            quantity: item.quantity || 1,
+            finalPrice: menuItem.price * (item.quantity || 1),
+            timeToPrepare: menuItem.timeToPrepare,
+          });
+        } else if (details.action === "replace" && item.replacement) {
+          console.log(`[DEBUG] Replacing item: ${item.name} with ${item.replacement.name}`);
+          const replacementItem = findMenuItem(item.replacement.name);
+          if (replacementItem) {
+            await orderService.modifyOrderItem(userId, item.name, {
+              name: replacementItem.name,
+              unitPrice: replacementItem.price,
+              quantity: item.replacement.quantity || 1,
+              finalPrice: replacementItem.price * (item.replacement.quantity || 1),
+              timeToPrepare: replacementItem.timeToPrepare,
+            });
+          } else {
+            console.warn(`[WARN] Replacement item not found: ${item.replacement.name}`);
+          }
+        }
+      }
+
+      // Fetch the updated order
+      const updatedOrder = await orderService.getUserActiveOrder(userId);
+      if (!updatedOrder || !updatedOrder.orderItems || updatedOrder.orderItems.length === 0) {
+        return {
+          reply:
+            "Your order has been updated, but it seems to be empty now. Please add items to continue.",
+        };
+      }
+
+      // Group and list the updated order items
+      const groupedItems = updatedOrder.orderItems.reduce((acc, item) => {
+        if (item.quantity > 0) {
+          if (!acc[item.name]) acc[item.name] = 0;
+          acc[item.name] += item.quantity;
+        }
+        return acc;
+      }, {} as Record<string, number>);
+
+      const itemsList = Object.entries(groupedItems)
+        .map(([name, quantity]) => `${quantity}x ${name}`)
+        .join(", ");
+
+      return {
+        reply: `Your updated order contains: ${itemsList}. Would you like to finalize the order?`,
+      };
+    }
+
+    case "finalize_order": {
+      console.log("[DEBUG] Detected intent: finalize_order");
+
+      const hasOpenOrder = await orderService.hasOpenOrderWithItems(userId);
+      if (!hasOpenOrder) {
+        return { reply: "You don't have an open order with items. Please add items first." };
+      }
+
+      await orderService.closeOrder(userId);
+      return { reply: "Your order has been finalized. Thank you!" };
+    }
+
+    case "ask_status": {
+      console.log("[DEBUG] Detected intent: ask_status");
+
+      const activeOrder = await orderService.getUserActiveOrder(userId);
+      if (!activeOrder) {
+        console.log("[DEBUG] No active order found.");
+        return { reply: "You don't have an active order at the moment." };
+      }
+
+      const { status, expectedDeliveryDate, orderItems } = activeOrder;
+
+      const groupedItems = orderItems!.reduce((acc, item) => {
+        if (item.quantity > 0) {
+          if (!acc[item.name]) acc[item.name] = 0;
+          acc[item.name] += item.quantity;
+        }
+        return acc;
+      }, {} as Record<string, number>);
+
+      const itemsList = Object.entries(groupedItems)
+        .map(([name, quantity]) => `${quantity}x ${name}`)
+        .join(", ");
+
+      const itemsReply = itemsList ? `Your order contains: ${itemsList}.` : "Your order is empty.";
+
+      switch (status) {
+        case OrderStatus.OPEN:
+          return {
+            reply: `${itemsReply} Your order is currently open. Please finalize it to proceed.`,
+          };
+        case OrderStatus.IN_PROGRESS: {
+          const timeLeft = expectedDeliveryDate
+            ? Math.max(
+                Math.ceil((new Date(expectedDeliveryDate).getTime() - Date.now()) / 60000),
+                0
+              )
+            : "unknown";
+          return {
+            reply: `${itemsReply} Your order is in progress. It is expected to arrive in approximately ${timeLeft} minutes.`,
+          };
+        }
+        case OrderStatus.COMPLETED:
+          return { reply: `${itemsReply} Your order has been completed. Thank you!` };
+        case OrderStatus.CANCEL:
+          return { reply: `${itemsReply} Your order has been canceled.` };
+        case OrderStatus.REFUNDED:
+          return { reply: `${itemsReply} Your order has been refunded.` };
+        default:
+          return {
+            reply: `${itemsReply} Your order is in an unknown state. Please contact support.`,
+          };
+      }
+    }
+
+    default:
+      return { reply: "I'm sorry, I couldn't understand your request. Could you clarify?" };
+  }
 }

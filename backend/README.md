@@ -1,5 +1,101 @@
-npm run dev
+
+# OrderWise Backend
+
+OrderWise is a backend service designed to manage and process restaurant orders seamlessly. Built with simplicity and scalability in mind, this project relies on **TypeScript**, **Express**, and **TypeORM** as the foundation, with intelligent actions powered by **OpenAI**. Schema validation is implemented using **Zod** for reliability and consistency.
+
+## Features
+
+- **Dynamic Menu Management**: Supports multiple restaurants and menu items with detailed descriptions, prices, and preparation times.
+- **Intelligent Order Processing**: Processes user requests for placing, modifying, and updating orders using AI-driven intent detection.
+- **Order Finalization**: Ensures that orders are only finalized when they meet the necessary conditions.
+- **Order Status Queries**: Allows users to ask about the status, progress, and estimated delivery time of their orders.
+- **Refund Handling**: Processes refund requests with AI-powered input interpretation.
+- **Update Orders**: Supports adding, removing, and replacing items in existing orders with detailed logging and validation.
+- **Schema Validation**: Uses **Zod** to validate input schemas, ensuring data integrity across the application.
+
+## Tech Stack
+
+### Backend
+- **Node.js**: A runtime environment for building scalable server-side applications.
+- **Express**: A minimalist web framework for building APIs.
+- **TypeScript**: Ensures type safety and improved developer experience.
+- **TypeORM**: A robust ORM for managing database interactions.
+
+### AI Integration
+- **OpenAI API**: Powers intent detection and natural language understanding, allowing users to interact with the system intuitively.
+
+### Database
+- **PostgreSQL**: A relational database used for persistent data storage.
+
+### Validation
+- **Zod**: Ensures robust and strict validation of data structures for consistent and error-free inputs.
+
+---
+
+## Project Structure
+
+```plaintext
+src/
+├── entities/        # Database models and menu data
+├── middlewares/     # Middlewares and handle dependency injection
+├── routes/          # Express routes for handling API requests
+├── services/        # Business logic (OrderService, chatAgent)
+├── utils/           # Helper functions (e.g., Levenshtein for approximate matching)
+└── index.ts         # Main entry point for the application
+```
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+Ensure you have the following installed:
+- **Node.js** (>= 14.x)
+- **npm** or **pnpm**
+- **Docker** (latest version)
+
+### Installation
+
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+2. Set up the OpenAI API key:
+   - Create a `.env` file in the root directory.
+   - Add your OpenAI API key:
+     ```plaintext
+     OPENAI_API_KEY=your-openai-api-key
+     ```
+
+3. Set up the database:
+   - Update the `.env` file with your database credentials.
+   - When you start the server in development a docker container with PostgreSql will be created and the migrations will be run.
+   
+
+4. Start the server:
+   ```bash
+   npm run dev
+   ```
 
 
-https://www.npmjs.com/package/js-levenshtein
-https://www.npmjs.com/package/@types/js-levenshtein
+---
+
+## Design Choices
+
+1. **Simplicity and Type Safety**: The project leverages TypeScript to provide a strong type system, reducing runtime errors and improving maintainability.
+2. **AI-Powered Decisions**: Instead of hardcoding logic for every scenario, this backend relies on OpenAI's natural language processing capabilities to dynamically interpret user intent.
+3. **Schema Validation**: Zod ensures that all inputs are validated, reducing the likelihood of errors caused by malformed data.
+4. **Scalable Architecture**: The combination of TypeORM and PostgreSQL allows the system to scale efficiently while maintaining data consistency.
+5. **Real-Time Features**: WebSocket-based notifications for order updates.
+6. **Future Optimizations**: Exploring **Levenshtein Distance** with fine-tuning to reduce the number of OpenAI calls while maintaining high accuracy.
+
+---
+
+## Future Enhancements
+
+- **Authentication**: Add user authentication and authorization.
+- **Enhanced AI**: Leverage embeddings or fine-tuned OpenAI models for better context understanding and recommendations.
+- **Levenshtein Optimizations**: Refine and tune the Levenshtein distance algorithm to improve matching accuracy, reducing dependency on OpenAI for common tasks.
+- **Admin Dashboard**: Create an admin panel for managing menu items, orders, and restaurants.

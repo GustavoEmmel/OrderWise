@@ -53,12 +53,7 @@ export class OrderService {
 
       const savedOrderItems: OrderItem[] = [];
 
-      console.log("orderItems", orderItems);
-      console.log("orderItemData", orderItemData);
-
       for (const itemData of orderItems) {
-        console.log("orderItemData", itemData);
-
         // Calculate the final price of the item.
         itemData.finalPrice = itemData.unitPrice * itemData.quantity;
 
@@ -66,8 +61,6 @@ export class OrderService {
           ...itemData,
           order,
         });
-
-        console.log("orderItem", orderItem);
 
         // Save the order item and update the order status.
         await transactionalEntityManager.save(orderItem);
@@ -97,7 +90,7 @@ export class OrderService {
     userId: number,
     itemName: string,
     newItemData: Omit<OrderItem, "id" | "order" | "createdAt" | "updatedAt">
-  ): Promise<OrderItem> {
+  ): Promise<OrderItem | null> {
     return await this.orderRepository.manager.transaction(async (transactionalEntityManager) => {
       const order = await this.getOrCreateOpenOrder(userId);
 
@@ -105,29 +98,34 @@ export class OrderService {
         throw new Error("No items found in order to modify");
       }
 
-      // Find and remove the existing order item by name.
-      const existingItemIndex = order.orderItems.findIndex(
+      // Find the existing order item by name
+      const existingItem = order.orderItems.find(
         (item) => item.name.toLowerCase() === itemName.toLowerCase()
       );
-      if (existingItemIndex !== -1) {
-        const existingItem = order.orderItems[existingItemIndex];
-        await transactionalEntityManager.remove(existingItem);
-        order.orderItems.splice(existingItemIndex, 1);
+
+      if (!existingItem) {
+        throw new Error(`Item "${itemName}" not found in the order`);
       }
 
-      newItemData.finalPrice = newItemData.unitPrice * newItemData.quantity;
+      // If the new quantity is zero or less, remove the item
+      if (newItemData.quantity <= 0) {
+        await transactionalEntityManager.remove(existingItem);
+        order.orderItems = order.orderItems.filter((item) => item.name !== itemName);
+        await transactionalEntityManager.save(order);
+        return null;
+      }
 
-      // Add the new item to the order.
-      const newOrderItem = this.orderItemRepository.create({
-        ...newItemData,
-        order,
-      });
+      // Update the existing item's quantity and final price
+      existingItem.quantity = newItemData.quantity;
+      existingItem.finalPrice = newItemData.unitPrice * newItemData.quantity;
 
-      order.status = OrderStatus.OPEN;
-      order.orderItems.push(newOrderItem);
+      // Save the updated item
+      await transactionalEntityManager.save(existingItem);
+
+      // Save the order
       await transactionalEntityManager.save(order);
 
-      return transactionalEntityManager.save(newOrderItem);
+      return existingItem;
     });
   }
 

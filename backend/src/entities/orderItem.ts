@@ -22,6 +22,9 @@ export class OrderItem {
   @Column("text", { nullable: true })
   description?: string;
 
+  @Column("text", { nullable: true })
+  notes?: string;
+
   @Column("int")
   quantity!: number;
 
