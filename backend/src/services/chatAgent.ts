@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import { menuData } from "../entities/menuData";
 import { OrderService } from "../services/order";
+import { OrderStatus } from "../entities/order";
 import levenshtein from "js-levenshtein";
 
 const openai = new OpenAI({
@@ -83,7 +84,7 @@ If no items match, return an empty array.
 }
 
 /**
- * Handles chatbot interactions, placing orders, managing active orders, processing refunds, and finalizing orders.
+ * Handles chatbot interactions, placing orders, managing active orders, processing refunds, answering order status questions, and finalizing orders.
  * @param messages - The conversation history with user messages.
  * @param orderService - The instance of OrderService for managing orders.
  * @param userId - Optional user ID to associate the order.
@@ -97,6 +98,43 @@ export async function chatAgent(
   const userMessage = messages[messages.length - 1].content;
 
   console.log("[DEBUG] Received user message:", userMessage);
+
+  // Check if the user is asking about order status
+  if (/where|when|status|arrive|complete|progress|order/i.test(userMessage.toLowerCase())) {
+    console.log("[DEBUG] User is asking about order status.");
+
+    // Retrieve the user's active order
+    const activeOrder = await orderService.getUserActiveOrder(userId);
+
+    if (!activeOrder) {
+      console.log("[DEBUG] No active order found.");
+      return { reply: "You don't have an active order at the moment." };
+    }
+
+    // Generate a response based on the order status and details
+    const { status, expectedDeliveryDate } = activeOrder;
+
+    switch (status) {
+      case OrderStatus.OPEN:
+        return {
+          reply: `Your order is currently open. Please finalize it to proceed.`,
+        };
+
+      case OrderStatus.IN_PROGRESS: {
+        const timeLeft = expectedDeliveryDate
+          ? Math.max(Math.ceil((new Date(expectedDeliveryDate).getTime() - Date.now()) / 60000), 0)
+          : "unknown";
+        return {
+          reply: `Your order is in progress. It is expected to arrive in approximately ${timeLeft} minutes.`,
+        };
+      }
+
+      default:
+        return {
+          reply: "Your order is in an unknown state. Please contact support for assistance.",
+        };
+    }
+  }
 
   // Check if the user wants a refund
   if (hasSimilarWord(userMessage, "refund")) {
