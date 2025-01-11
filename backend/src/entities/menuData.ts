@@ -1,5 +1,5 @@
 // Define the type for an individual menu item
-interface MenuItem {
+export interface MenuItem {
   name: string;
   description: string;
   ingredients: string[];

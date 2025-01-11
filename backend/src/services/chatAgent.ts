@@ -1,6 +1,7 @@
 import OpenAI from "openai";
-import { menuData } from "../entities/menuData";
+import { menuData, MenuItem } from "../entities/menuData";
 import { OrderService } from "../services/order";
+import levenshtein from "js-levenshtein";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
@@ -20,7 +21,71 @@ ${JSON.stringify(menuData, null, 2)}
 }
 
 /**
- * Extracts menu items and full details from the user's message using OpenAI.
+ * Finds the closest menu item name using Levenshtein distance.
+ * @param input - The user's input.
+ * @param menuItems - The list of menu items.
+ * @returns The best matching menu item or null if no match is found.
+ */
+function findClosestMenuItem(input: string, menuItems: MenuItem[]): MenuItem | null {
+  let closestItem: MenuItem | null = null;
+  let minDistance = Infinity;
+
+  for (const item of menuItems) {
+    const distance = levenshtein(input.toLowerCase(), item.name.toLowerCase());
+    if (distance < minDistance && distance <= 3) {
+      // Allow a maximum Levenshtein distance of 3
+      closestItem = item;
+      minDistance = distance;
+    }
+  }
+
+  return closestItem;
+}
+
+/**
+ * Extracts menu items and full details from the user's message using approximate matching.
+ * Falls back to AI if no matches are found.
+ * @param userMessage - The user's input message.
+ * @returns An array of items with their full details (name, quantity, description, price, timeToPrepare).
+ */
+async function extractOrderItems(
+  userMessage: string
+): Promise<
+  { name: string; quantity: number; description: string; price: number; timeToPrepare: number }[]
+> {
+  console.log("[DEBUG] Extracting items using approximate matching for user message:", userMessage);
+
+  const words = userMessage.split(/\s+/);
+  const extractedItems: MenuItem[] = [];
+
+  for (const word of words) {
+    for (const restaurant of Object.values(menuData)) {
+      const menuItems = restaurant.items;
+      const closestItem = findClosestMenuItem(word, menuItems);
+
+      if (closestItem) {
+        console.log("[DEBUG] Closest match found:", closestItem);
+        extractedItems.push(closestItem);
+      }
+    }
+  }
+
+  if (extractedItems.length > 0) {
+    return extractedItems.map((item) => ({
+      name: item.name,
+      quantity: 1, // Default quantity
+      description: item.description,
+      price: item.price,
+      timeToPrepare: item.timeToPrepare,
+    }));
+  }
+
+  console.log("[DEBUG] No matches found with Levenshtein. Falling back to AI.");
+  return await extractOrderItemsAI(userMessage);
+}
+
+/**
+ * Fallback to AI for extracting order items.
  * @param userMessage - The user's input message.
  * @returns An array of items with their full details (name, quantity, description, price, timeToPrepare).
  */
@@ -103,8 +168,8 @@ export async function chatAgent(
     }
   }
 
-  // Use AI to extract items from the user's message
-  const extractedItems = await extractOrderItemsAI(userMessage);
+  // Use Levenshtein or fallback to AI to extract items
+  const extractedItems = await extractOrderItems(userMessage);
 
   if (extractedItems.length > 0) {
     console.log("[DEBUG] Detected items for order:", extractedItems);
