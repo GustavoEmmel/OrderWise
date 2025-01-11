@@ -1,4 +1,24 @@
-export const menuData = {
+// Define the type for an individual menu item
+interface MenuItem {
+  name: string;
+  description: string;
+  ingredients: string[];
+  price: number;
+  timeToPrepare: number;
+}
+
+// Define the type for a restaurant's menu
+interface RestaurantMenu {
+  name: string;
+  items: MenuItem[];
+}
+
+// Define the type for the complete menu data
+export interface MenuData {
+  [key: string]: RestaurantMenu;
+}
+
+export const menuData: MenuData = {
   mcdonalds: {
     name: "McDonald's",
     items: [
