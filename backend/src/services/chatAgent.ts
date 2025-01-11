@@ -7,40 +7,53 @@ const openai = new OpenAI({
 });
 
 /**
- * Extracts menu items and quantities from the user's message.
+ * Extracts menu items and full details from the user's message using OpenAI.
  * @param userMessage - The user's input message.
- * @returns An array of items with their names and quantities.
+ * @returns An array of items with their full details (name, quantity, description, price, timeToPrepare).
  */
-function extractOrderItems(userMessage: string) {
-  console.log("[DEBUG] Extracting items from user message:", userMessage);
-  const items = [];
-  const lowerCaseMessage = userMessage.toLowerCase();
-  const tokens = lowerCaseMessage.split(/[\s,]+and\s+|,/);
+async function extractOrderItemsAI(
+  userMessage: string
+): Promise<
+  { name: string; quantity: number; description: string; price: number; timeToPrepare: number }[]
+> {
+  console.log("[DEBUG] Extracting items using AI for user message:", userMessage);
 
-  for (const token of tokens) {
-    for (const restaurant in menuData) {
-      menuData[restaurant].items.forEach((menuItem) => {
-        const itemRegex = new RegExp(`\\b${menuItem.name.toLowerCase()}\\b`, "gi");
-        const matches = token.match(itemRegex);
+  const systemPrompt = `
+You are an assistant that processes restaurant orders. Your task is to extract menu items and their quantities from a user's message.
+The menu items and their details are provided below:
+${JSON.stringify(menuData, null, 2)}
 
-        if (matches) {
-          const quantityRegex = new RegExp(`(\\d+)\\s*${menuItem.name.toLowerCase()}`, "i");
-          const quantityMatch = token.match(quantityRegex);
-          const quantity = quantityMatch ? parseInt(quantityMatch[1], 10) : 1;
-          items.push({
-            name: menuItem.name,
-            quantity,
-            description: menuItem.description,
-            price: menuItem.price,
-            timeToPrepare: menuItem.timeToPrepare,
-          });
-        }
-      });
-    }
+Output the extracted items as a JSON array with the format:
+[
+  {
+    "name": "<item name>",
+    "quantity": <quantity>,
+    "description": "<item description>",
+    "price": <item price>,
+    "timeToPrepare": <time to prepare>
   }
+]
 
-  console.log("[DEBUG] Extracted items:", items);
-  return items;
+If an item is not explicitly mentioned with a quantity, assume the quantity is 1.
+If no items match, return an empty array.
+`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userMessage },
+      ],
+    });
+
+    const extractedItems = JSON.parse(response.choices[0]?.message?.content || "[]");
+    console.log("[DEBUG] Extracted items from AI:", extractedItems);
+    return extractedItems;
+  } catch (error) {
+    console.error("[ERROR] Failed to extract items using AI:", error);
+    return [];
+  }
 }
 
 /**
@@ -54,33 +67,33 @@ export async function chatAgent(
   orderService: OrderService
 ) {
   const userId = 1; // Hardcoded userId for now
-  const userMessage = messages[messages.length - 1].content.toLowerCase();
+  const userMessage = messages[messages.length - 1].content;
 
   console.log("[DEBUG] Received user message:", userMessage);
 
   // Check if the user wants to finalize the order
-  if (/yes|finalize|confirm/i.test(userMessage)) {
+  if (/yes|finalize|confirm/i.test(userMessage.toLowerCase())) {
     console.log("[DEBUG] User wants to finalize the order");
     await orderService.closeOrder(userId);
     return { reply: "Your order has been finalized. Thank you!" };
   }
 
-  // Attempt to extract items from the user's message
-  const extractedItems = extractOrderItems(userMessage);
+  // Use AI to extract items from the user's message
+  const extractedItems = await extractOrderItemsAI(userMessage);
 
   if (extractedItems.length > 0) {
     console.log("[DEBUG] Detected items for order:", extractedItems);
-
-    for (const item of extractedItems) {
-      await orderService.addOrderItem(userId, {
-        name: item.name,
-        description: item.description,
-        unitPrice: item.price,
-        quantity: item.quantity,
-        finalPrice: 0, // Assuming final price is calculated in the backend
-        timeToPrepare: item.timeToPrepare,
-      });
-    }
+    await Promise.all(
+      extractedItems.map((item) =>
+        orderService.addOrderItem(userId, {
+          name: item.name,
+          unitPrice: item.price,
+          quantity: item.quantity,
+          finalPrice: item.price * item.quantity, // Calculate the final price
+          timeToPrepare: item.timeToPrepare,
+        })
+      )
+    );
 
     // Fetch active order data
     const activeOrder = await orderService.getUserActiveOrder(userId);
