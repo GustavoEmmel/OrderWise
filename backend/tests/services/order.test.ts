@@ -111,7 +111,7 @@ describe("OrderService", () => {
     when(mockEntityManager.save(anything())).thenResolve(orderItemData as OrderItem);
     when(mockEntityManager.save(anything())).thenResolve(order);
 
-    const orderItem = await orderService.addOrderItem(1, orderItemData);
+    const orderItem = (await orderService.addOrderItem(1, orderItemData)) as OrderItem;
 
     expect(orderItem).toBeDefined();
     expect(orderItem.name).toBe(orderItemData.name);

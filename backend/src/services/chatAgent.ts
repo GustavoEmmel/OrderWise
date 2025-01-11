@@ -149,7 +149,10 @@ If you cannot detect any items or intent, ask the user for clarification.
   try {
     const response = await openai.chat.completions.create({
       model: "gpt-4",
-      messages: [{ role: "system", content: fallbackPrompt }, ...messages],
+      messages: [
+        { role: "system", content: fallbackPrompt },
+        { role: "user", content: userMessage },
+      ],
     });
 
     console.log("[DEBUG] OpenAI response:", response);

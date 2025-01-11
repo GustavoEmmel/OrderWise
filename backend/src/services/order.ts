@@ -154,9 +154,10 @@ export class OrderService {
   /**
    * Processes a refund for the user's most recent completed or in-progress order.
    * @param userId - The ID of the user.
+   * @param reason - The reason for the refund (optional).
    * @returns The refunded order.
    */
-  async refund(userId: number): Promise<Order> {
+  async refund(userId: number, reason?: string): Promise<Order> {
     return await this.orderRepository.manager.transaction(async (transactionalEntityManager) => {
       const order = await transactionalEntityManager.findOne(Order, {
         where: {
@@ -178,6 +179,9 @@ export class OrderService {
 
       order.status = OrderStatus.REFUNDED;
       order.refundAmount = order.price;
+      if (reason) {
+        order.refundReason = reason;
+      }
 
       return transactionalEntityManager.save(order);
     });
