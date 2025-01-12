@@ -93,7 +93,10 @@ For the recommendation intent, return a JSON object like this:
       details: {
         action: rawDetails.details?.action || undefined,
         items,
+<<<<<<< HEAD
         criteria: rawDetails.details?.criteria || [],
+=======
+>>>>>>> 0a491b88ac3500b631817d6b8cb76b48aa1b23b1
       },
     };
     console.log("[DEBUG] Normalized intent and details:", interpretation);
@@ -102,10 +105,14 @@ For the recommendation intent, return a JSON object like this:
     console.error("[ERROR] Failed to interpret intent using AI:", error);
 
     // Fallback for simple finalization confirmations
+<<<<<<< HEAD
     if (
       /yes|finalize|confirm/i.test(userMessage.toLowerCase()) ||
       hasSimilarWord(userMessage, "yes")
     ) {
+=======
+    if (/yes|finalize|confirm/i.test(userMessage.toLowerCase())) {
+>>>>>>> 0a491b88ac3500b631817d6b8cb76b48aa1b23b1
       return { intent: "finalize_order", details: { items: [] } };
     }
 
