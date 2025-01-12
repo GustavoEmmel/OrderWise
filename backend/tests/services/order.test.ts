@@ -53,8 +53,6 @@ describe("OrderService", () => {
       ).thenResolve(existingOrder);
 
       const order = await orderService.getUserActiveOrder(1);
-      console.log("order", order);
-
       expect(order).toEqual(existingOrder);
     });
   });
@@ -167,8 +165,6 @@ describe("OrderService", () => {
       when(mockEntityManager.save(order)).thenResolve(order);
 
       const modifiedOrderItem = await orderService.modifyOrderItem(1, "Test Item", newItemData);
-
-      console.log("modifiedOrderItem", modifiedOrderItem);
 
       expect(modifiedOrderItem).toBeDefined();
       expect(modifiedOrderItem?.name).toBe(newItemData.name);

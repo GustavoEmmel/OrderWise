@@ -51,6 +51,14 @@ export const menuData: MenuData = {
         timeToPrepare: 2,
       },
       {
+        name: "Sprite",
+        description:
+          "Crisp, refreshing and clean-tasting Sprite is a lemon and lime-flavoured soft drink.",
+        ingredients: ["carbonated water", "sugar", "flavoring"],
+        price: 1.99,
+        timeToPrepare: 2,
+      },
+      {
         name: "Apple Pie",
         description: "A classic dessert filled with warm apple goodness.",
         ingredients: ["apples", "sugar", "pastry"],

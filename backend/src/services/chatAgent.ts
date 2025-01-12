@@ -1,57 +1,16 @@
 import OpenAI from "openai";
-import { menuData } from "../entities/menuData";
 import { OrderService } from "../services/order";
 import { OrderStatus } from "../entities/order";
-import levenshtein from "js-levenshtein";
+import {
+  findMenuItem,
+  generateSystemPrompt,
+  groupOrderItems,
+  hasSimilarWord,
+} from "../utils/chatAgentHelper";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
 });
-
-/**
- * Finds a menu item by its name from menuData.
- * @param itemName - The name of the item to find.
- * @returns The menu item if found, or null if not found.
- */
-function findMenuItem(itemName: string) {
-  for (const restaurant of Object.values(menuData)) {
-    const item = restaurant.items.find(
-      (menuItem) => menuItem.name.toLowerCase() === itemName.toLowerCase()
-    );
-    if (item) return item;
-  }
-  return null;
-}
-
-/**
- * Generates a system prompt for AI requests.
- * @param task - Description of the AI task.
- * @returns A formatted system prompt string.
- */
-function generateSystemPrompt(task: string): string {
-  return `
-You are an intelligent assistant for a restaurant chatbot. Your task is: ${task}
-Below is the restaurant menu data:
-${JSON.stringify(menuData, null, 2)}
-`;
-}
-
-/**
- * Uses Levenshtein distance to detect a word close to the target.
- * @param input - The user's input.
- * @param target - The target word.
- * @returns True if a word similar to the target is found, false otherwise.
- */
-function hasSimilarWord(input: string, target: string): boolean {
-  const words = input.split(/\s+/);
-  for (const word of words) {
-    const distance = levenshtein(word.toLowerCase(), target.toLowerCase());
-    if (distance <= 2) {
-      return true;
-    }
-  }
-  return false;
-}
 
 /**
  * Uses AI to interpret the user's intent from the given message.
@@ -65,6 +24,7 @@ async function detectIntentAI(userMessage: string): Promise<{
     items: Array<{
       name: string;
       quantity?: number;
+      notes?: string;
       replacement?: {
         name: string;
         quantity?: number;
@@ -94,6 +54,7 @@ For each intent, return a JSON object like this:
       {
         "name": "<item name>",
         "quantity": <quantity>,
+        "notes": "<optional notes about the item>",
         "replacement": <if replacing, include new item details as { name, quantity, description, price, timeToPrepare }>
       }
     ]
@@ -122,7 +83,6 @@ For each intent, return a JSON object like this:
         items,
       },
     };
-
     console.log("[DEBUG] Normalized intent and details:", interpretation);
     return interpretation;
   } catch (error) {
@@ -190,10 +150,12 @@ export async function chatAgent(
 
         await orderService.addOrderItem(userId, {
           name: menuItem.name,
+          description: menuItem.description,
           unitPrice: menuItem.price,
           quantity: item.quantity || 1,
           finalPrice: menuItem.price * (item.quantity || 1),
           timeToPrepare: menuItem.timeToPrepare,
+          notes: item.notes,
         });
       }
 
@@ -253,6 +215,7 @@ export async function chatAgent(
             quantity: item.quantity || 1,
             finalPrice: menuItem.price * (item.quantity || 1),
             timeToPrepare: menuItem.timeToPrepare,
+            notes: item.notes,
           });
         } else if (details.action === "replace" && item.replacement) {
           console.log(`[DEBUG] Replacing item: ${item.name} with ${item.replacement.name}`);
@@ -260,6 +223,7 @@ export async function chatAgent(
           if (replacementItem) {
             await orderService.modifyOrderItem(userId, item.name, {
               name: replacementItem.name,
+              description: item.replacement.description,
               unitPrice: replacementItem.price,
               quantity: item.replacement.quantity || 1,
               finalPrice: replacementItem.price * (item.replacement.quantity || 1),
@@ -281,17 +245,7 @@ export async function chatAgent(
       }
 
       // Group and list the updated order items
-      const groupedItems = updatedOrder.orderItems.reduce((acc, item) => {
-        if (item.quantity > 0) {
-          if (!acc[item.name]) acc[item.name] = 0;
-          acc[item.name] += item.quantity;
-        }
-        return acc;
-      }, {} as Record<string, number>);
-
-      const itemsList = Object.entries(groupedItems)
-        .map(([name, quantity]) => `${quantity}x ${name}`)
-        .join(", ");
+      const itemsList = groupOrderItems(updatedOrder.orderItems);
 
       return {
         reply: `Your updated order contains: ${itemsList}. Would you like to finalize the order?`,
@@ -321,17 +275,7 @@ export async function chatAgent(
 
       const { status, expectedDeliveryDate, orderItems } = activeOrder;
 
-      const groupedItems = orderItems!.reduce((acc, item) => {
-        if (item.quantity > 0) {
-          if (!acc[item.name]) acc[item.name] = 0;
-          acc[item.name] += item.quantity;
-        }
-        return acc;
-      }, {} as Record<string, number>);
-
-      const itemsList = Object.entries(groupedItems)
-        .map(([name, quantity]) => `${quantity}x ${name}`)
-        .join(", ");
+      const itemsList = groupOrderItems(orderItems!);
 
       const itemsReply = itemsList ? `Your order contains: ${itemsList}.` : "Your order is empty.";
 

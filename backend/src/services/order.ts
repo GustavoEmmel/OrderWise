@@ -116,8 +116,12 @@ export class OrderService {
       }
 
       // Update the existing item's quantity and final price
+      existingItem.name = newItemData.name;
+      existingItem.description = newItemData.description;
       existingItem.quantity = newItemData.quantity;
+      existingItem.unitPrice = newItemData.unitPrice;
       existingItem.finalPrice = newItemData.unitPrice * newItemData.quantity;
+      existingItem.timeToPrepare = newItemData.timeToPrepare;
 
       // Save the updated item
       await transactionalEntityManager.save(existingItem);
@@ -251,6 +255,16 @@ export class OrderService {
       order.expectedDeliveryDate = expectedDeliveryDate;
 
       return transactionalEntityManager.save(order);
+    });
+  }
+
+  /**
+   * Fetches all orders in the system.
+   * @returns All orders.
+   */
+  async getAllOrders(): Promise<Order[]> {
+    return await this.orderRepository.find({
+      relations: ["user", "orderItems"],
     });
   }
 }

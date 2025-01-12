@@ -8,6 +8,7 @@ import { AppDataSource } from "./config/database";
 import { initializeWebSocketServer } from "./plugins/websocket-server";
 import healthRouter from "./routes/health";
 import chatRouter from "./routes/chat";
+import orderRouter from "./routes/order";
 import rateLimit from "express-rate-limit";
 import { orderServiceProvider } from "./middlewares/orderServiceProvider";
 
@@ -41,6 +42,7 @@ app.use(orderServiceProvider); // Use the service provider middleware
 
 app.use("/health", healthRouter);
 app.use("/chat", chatRouter);
+app.use("/order", orderRouter);
 
 // Start Server
 app.listen(PORT, () => {

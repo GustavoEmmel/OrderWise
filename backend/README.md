@@ -10,7 +10,7 @@ OrderWise is a backend service designed to manage and process restaurant orders 
 - **Order Finalization**: Ensures that orders are only finalized when they meet the necessary conditions.
 - **Order Status Queries**: Allows users to ask about the status, progress, and estimated delivery time of their orders.
 - **Refund Handling**: Processes refund requests with AI-powered input interpretation.
-- **Update Orders**: Supports adding, removing, and replacing items in existing orders with detailed logging and validation.
+- **Update Orders**: Supports adding, removing, replacing items, and capturing notes in existing orders with detailed logging and validation.
 - **Schema Validation**: Uses **Zod** to validate input schemas, ensuring data integrity across the application.
 
 ## Tech Stack
@@ -37,7 +37,8 @@ OrderWise is a backend service designed to manage and process restaurant orders 
 ```plaintext
 src/
 ├── entities/        # Database models and menu data
-├── middlewares/     # Middlewares and handle dependency injection
+├── middlewares/     # Middlewares for handling dependency injection
+├── migrations/      # Migration code that needs to be filled in the database
 ├── routes/          # Express routes for handling API requests
 ├── services/        # Business logic (OrderService, chatAgent)
 ├── utils/           # Helper functions (e.g., Levenshtein for approximate matching)
@@ -70,15 +71,14 @@ Ensure you have the following installed:
      ```
 
 3. Set up the database:
+   - Ensure Docker is running.
    - Update the `.env` file with your database credentials.
-   - When you start the server in development a docker container with PostgreSql will be created and the migrations will be run.
-   
+   - When you start the server in development, a Docker container with PostgreSQL will be created, and migrations will run automatically.
 
 4. Start the server:
    ```bash
    npm run dev
    ```
-
 
 ---
 
@@ -93,9 +93,80 @@ Ensure you have the following installed:
 
 ---
 
+## Examples of `chatAgent` Usage
+
+The `chatAgent` is the core of OrderWise's AI-driven order processing. Below are examples of how to interact with it.
+
+### Placing an Order
+
+#### Input
+```json
+{
+  "messages": [
+    { "role": "user", "content": "I want 2 Big Macs and a Coke without ice." }
+  ]
+}
+```
+
+#### Behavior
+- `Big Mac` will be added with a quantity of 2.
+- `Coke` will be added with a note: `without ice`.
+
+#### Output
+```json
+{
+  "reply": "You have 2x Big Mac, 1x Coke (without ice). Would you like to finalize the order?"
+}
+```
+
+---
+
+### Modifying an Order
+
+#### Adding Notes
+#### Input
+```json
+{
+  "messages": [
+    { "role": "user", "content": "I want to add a note to my Big Mac: no pickles." }
+  ]
+}
+```
+
+#### Behavior
+- The note `no pickles` will be added to the existing `Big Mac` in the order.
+
+#### Output
+```json
+{
+  "reply": "Your updated order contains: 2x Big Mac (no pickles), 1x Coke (without ice). Would you like to finalize the order?"
+}
+```
+
+#### Removing an Item
+#### Input
+```json
+{
+  "messages": [
+    { "role": "user", "content": "Remove the Coke from my order." }
+  ]
+}
+```
+
+#### Output
+```json
+{
+  "reply": "Your updated order contains: 2x Big Mac (no pickles). Would you like to finalize the order?"
+}
+```
+
+---
+
 ## Future Enhancements
 
 - **Authentication**: Add user authentication and authorization.
 - **Enhanced AI**: Leverage embeddings or fine-tuned OpenAI models for better context understanding and recommendations.
+- **Integration tests**: Improve the tests to spin up a test database with Docker in order to actual hit the database and endpoints in validate the stored data.
 - **Levenshtein Optimizations**: Refine and tune the Levenshtein distance algorithm to improve matching accuracy, reducing dependency on OpenAI for common tasks.
 - **Admin Dashboard**: Create an admin panel for managing menu items, orders, and restaurants.
+
