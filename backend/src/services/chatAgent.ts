@@ -2,6 +2,7 @@ import OpenAI from "openai";
 import { OrderService } from "../services/order";
 import { OrderStatus } from "../entities/order";
 import {
+  filterMenuItemsByCriteria,
   findMenuItem,
   generateSystemPrompt,
   groupOrderItems,
@@ -21,6 +22,7 @@ async function detectIntentAI(userMessage: string): Promise<{
   intent: string;
   details: {
     action?: "add" | "remove" | "replace";
+    criteria?: Array<string>;
     items: Array<{
       name: string;
       quantity?: number;
@@ -44,6 +46,8 @@ Understand the user's intent regarding their order. Possible intents include:
 - "finalize_order": When the user wants to confirm and finalize their order.
 - "ask_status": When the user asks about the status, progress, or details of their order.
 - "refund_request": When the user requests a refund for their order.
+- "recommendation_request": When the user asks for a recommendation based on criteria like spiciness, vegetarian, or time.
+
 
 For each intent, return a JSON object like this:
 {
@@ -58,6 +62,14 @@ For each intent, return a JSON object like this:
         "replacement": <if replacing, include new item details as { name, quantity, description, price, timeToPrepare }>
       }
     ]
+  }
+}
+
+For the recommendation intent, return a JSON object like this:
+{
+  "intent": "recommendation_request",
+  "details": {
+    "criteria": ["<spicy|vegetarian|gluten-free|quick|...>"]
   }
 }
 `);
@@ -81,6 +93,7 @@ For each intent, return a JSON object like this:
       details: {
         action: rawDetails.details?.action || undefined,
         items,
+        criteria: rawDetails.details?.criteria || [],
       },
     };
     console.log("[DEBUG] Normalized intent and details:", interpretation);
@@ -89,7 +102,10 @@ For each intent, return a JSON object like this:
     console.error("[ERROR] Failed to interpret intent using AI:", error);
 
     // Fallback for simple finalization confirmations
-    if (/yes|finalize|confirm/i.test(userMessage.toLowerCase())) {
+    if (
+      /yes|finalize|confirm/i.test(userMessage.toLowerCase()) ||
+      hasSimilarWord(userMessage, "yes")
+    ) {
       return { intent: "finalize_order", details: { items: [] } };
     }
 
@@ -262,6 +278,33 @@ export async function chatAgent(
 
       await orderService.closeOrder(userId);
       return { reply: "Your order has been finalized. Thank you!" };
+    }
+
+    case "recommendation_request": {
+      console.log("[DEBUG] Detected intent: recommendation_request");
+
+      const criteria = details.criteria || [];
+      if (criteria.length === 0) {
+        return {
+          reply:
+            "Could you specify what kind of recommendation you'd like? (e.g., spicy, vegetarian)",
+        };
+      }
+
+      const suggestions = filterMenuItemsByCriteria(criteria);
+
+      if (suggestions.length === 0) {
+        return {
+          reply:
+            "Sorry, I couldn't find any items matching your criteria. Would you like to try something else?",
+        };
+      }
+
+      const suggestionsList = suggestions
+        .map((item) => `${item.name} - ${item.description} ($${item.price.toFixed(2)})`)
+        .join("\n");
+
+      return { reply: `Here are some suggestions:\n${suggestionsList}` };
     }
 
     case "ask_status": {

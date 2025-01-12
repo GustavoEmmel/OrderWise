@@ -51,7 +51,6 @@ export function hasSimilarWord(input: string, target: string): boolean {
  * @param orderItems - The order items to group.
  * @returns A record with item names as keys and their total quantities as values.
  */
-
 export function groupOrderItems(orderItems: Array<{ name: string; quantity: number }>) {
   const groupedItems = orderItems.reduce((acc, item) => {
     if (item.quantity > 0) {
@@ -66,4 +65,27 @@ export function groupOrderItems(orderItems: Array<{ name: string; quantity: numb
     .join(", ");
 
   return itemsList;
+}
+
+/**
+ * Finds a menu items based on its tags
+ * @param criteria - The tags we are looking for.
+ * @returns The menu items if found, or null if not found.
+ */
+export function filterMenuItemsByCriteria(
+  criteria: string[]
+): Array<{ name: string; description: string; price: number }> {
+  const suggestions: Array<{ name: string; description: string; price: number }> = [];
+  for (const restaurant of Object.values(menuData)) {
+    for (const item of restaurant.items) {
+      if (criteria.every((criterion) => item.tags?.includes(criterion))) {
+        suggestions.push({
+          name: item.name,
+          description: item.description,
+          price: item.price,
+        });
+      }
+    }
+  }
+  return suggestions;
 }

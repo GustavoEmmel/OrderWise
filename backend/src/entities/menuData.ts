@@ -5,6 +5,7 @@ export interface MenuItem {
   ingredients: string[];
   price: number;
   timeToPrepare: number;
+  tags?: string[];
 }
 
 // Define the type for a restaurant's menu
@@ -28,6 +29,7 @@ export const menuData: MenuData = {
         ingredients: ["beef patty", "lettuce", "cheese", "special sauce", "bun"],
         price: 5.99,
         timeToPrepare: 10,
+        tags: ["burger", "beef", "classic"],
       },
       {
         name: "Large Fries",
@@ -35,6 +37,7 @@ export const menuData: MenuData = {
         ingredients: ["potatoes", "salt", "oil"],
         price: 2.99,
         timeToPrepare: 5,
+        tags: ["side", "vegetarian", "crispy"],
       },
       {
         name: "Chicken Nuggets (10 pcs)",
@@ -42,6 +45,7 @@ export const menuData: MenuData = {
         ingredients: ["chicken", "breadcrumbs", "spices"],
         price: 4.99,
         timeToPrepare: 8,
+        tags: ["chicken", "snack", "crispy"],
       },
       {
         name: "Coke",
@@ -49,6 +53,7 @@ export const menuData: MenuData = {
         ingredients: ["carbonated water", "sugar", "flavoring"],
         price: 1.99,
         timeToPrepare: 2,
+        tags: ["drink", "cold", "refreshing"],
       },
       {
         name: "Sprite",
@@ -57,6 +62,15 @@ export const menuData: MenuData = {
         ingredients: ["carbonated water", "sugar", "flavoring"],
         price: 1.99,
         timeToPrepare: 2,
+        tags: ["drink", "cold", "refreshing"],
+      },
+      {
+        name: "Juice",
+        description: "A refreshing blend of fruit juices, perfect for a sunny day.",
+        ingredients: ["water", "sugar", "fruit juice"],
+        price: 2.99,
+        timeToPrepare: 4,
+        tags: ["drink", "cold", "refreshing"],
       },
       {
         name: "Apple Pie",
@@ -64,6 +78,7 @@ export const menuData: MenuData = {
         ingredients: ["apples", "sugar", "pastry"],
         price: 1.5,
         timeToPrepare: 5,
+        tags: ["dessert", "sweet", "classic"],
       },
     ],
   },
@@ -76,6 +91,7 @@ export const menuData: MenuData = {
         ingredients: ["pepperoni", "cheese", "dough", "tomato sauce"],
         price: 12.99,
         timeToPrepare: 20,
+        tags: ["pizza", "pepperoni", "cheese"],
       },
       {
         name: "Cheese Lovers Pizza",
@@ -83,6 +99,7 @@ export const menuData: MenuData = {
         ingredients: ["mozzarella", "parmesan", "cheddar", "dough", "tomato sauce"],
         price: 13.99,
         timeToPrepare: 18,
+        tags: ["pizza", "cheese", "vegetarian"],
       },
       {
         name: "Garlic Bread",
@@ -90,6 +107,7 @@ export const menuData: MenuData = {
         ingredients: ["bread", "garlic", "butter"],
         price: 4.99,
         timeToPrepare: 10,
+        tags: ["side", "vegetarian", "bread"],
       },
       {
         name: "Spicy Chicken Wings",
@@ -97,6 +115,7 @@ export const menuData: MenuData = {
         ingredients: ["chicken wings", "hot sauce", "spices"],
         price: 9.99,
         timeToPrepare: 15,
+        tags: ["chicken", "spicy", "snack"],
       },
     ],
   },
@@ -109,6 +128,7 @@ export const menuData: MenuData = {
         ingredients: ["chicken", "flour", "spices", "oil"],
         price: 8.99,
         timeToPrepare: 12,
+        tags: ["chicken", "fried", "classic"],
       },
       {
         name: "Mashed Potatoes with Gravy",
@@ -116,6 +136,7 @@ export const menuData: MenuData = {
         ingredients: ["potatoes", "gravy", "butter"],
         price: 3.99,
         timeToPrepare: 5,
+        tags: ["side", "vegetarian", "comfort food"],
       },
       {
         name: "Zinger Burger",
@@ -123,6 +144,7 @@ export const menuData: MenuData = {
         ingredients: ["chicken", "lettuce", "spicy seasoning", "bun"],
         price: 6.99,
         timeToPrepare: 10,
+        tags: ["burger", "spicy", "chicken"],
       },
       {
         name: "Coleslaw",
@@ -130,6 +152,7 @@ export const menuData: MenuData = {
         ingredients: ["cabbage", "carrots", "mayo"],
         price: 2.49,
         timeToPrepare: 3,
+        tags: ["side", "vegetarian", "refreshing"],
       },
     ],
   },
@@ -142,6 +165,7 @@ export const menuData: MenuData = {
         ingredients: ["beef patty", "lettuce", "tomato", "mayo", "bun"],
         price: 6.99,
         timeToPrepare: 10,
+        tags: ["burger", "beef", "classic"],
       },
       {
         name: "Onion Rings",
@@ -149,6 +173,7 @@ export const menuData: MenuData = {
         ingredients: ["onions", "batter", "oil"],
         price: 3.49,
         timeToPrepare: 7,
+        tags: ["side", "vegetarian", "crispy"],
       },
       {
         name: "Chicken Fries",
@@ -156,6 +181,7 @@ export const menuData: MenuData = {
         ingredients: ["chicken", "breadcrumbs", "oil"],
         price: 5.49,
         timeToPrepare: 8,
+        tags: ["chicken", "snack", "crispy"],
       },
       {
         name: "Chocolate Shake",
@@ -163,6 +189,7 @@ export const menuData: MenuData = {
         ingredients: ["milk", "chocolate syrup", "ice cream"],
         price: 4.99,
         timeToPrepare: 5,
+        tags: ["drink", "sweet", "dessert"],
       },
     ],
   },
@@ -175,6 +202,7 @@ export const menuData: MenuData = {
         ingredients: ["pepperoni", "salami", "ham", "lettuce", "tomato", "bread"],
         price: 7.99,
         timeToPrepare: 8,
+        tags: ["sandwich", "meat", "classic"],
       },
       {
         name: "Veggie Delite",
@@ -182,6 +210,7 @@ export const menuData: MenuData = {
         ingredients: ["lettuce", "tomato", "cucumber", "peppers", "bread"],
         price: 6.49,
         timeToPrepare: 5,
+        tags: ["sandwich", "vegetarian", "healthy"],
       },
       {
         name: "Chicken Teriyaki",
@@ -189,6 +218,7 @@ export const menuData: MenuData = {
         ingredients: ["chicken", "teriyaki sauce", "lettuce", "tomato", "bread"],
         price: 8.49,
         timeToPrepare: 10,
+        tags: ["sandwich", "chicken", "Asian"],
       },
       {
         name: "Chocolate Chip Cookie",
@@ -196,6 +226,7 @@ export const menuData: MenuData = {
         ingredients: ["flour", "chocolate chips", "butter", "sugar"],
         price: 1.25,
         timeToPrepare: 2,
+        tags: ["dessert", "sweet", "snack"],
       },
     ],
   },
