@@ -3,7 +3,6 @@ import { Order } from "../entities/order";
 import { OrderItem } from "../entities/orderItem";
 import { User } from "../entities/user";
 import { ConversationLog } from "../entities/conversationLog";
-import { Refund } from "../entities/refund";
 
 export const AppDataSource = new DataSource({
   type: "postgres",
@@ -12,7 +11,7 @@ export const AppDataSource = new DataSource({
   username: process.env.DB_USER || "admin",
   password: process.env.DB_PASSWORD || "password",
   database: process.env.DB_NAME || "orderwise",
-  entities: [Order, OrderItem, User, ConversationLog, Refund],
+  entities: [Order, OrderItem, User, ConversationLog],
   migrations: ["src/migrations/*.ts"],
   logging: false, // Disable in production
   synchronize: true, // Disable in production
