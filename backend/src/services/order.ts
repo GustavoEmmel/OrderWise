@@ -42,30 +42,40 @@ export class OrderService {
    */
   async addOrderItem(
     userId: number,
-    orderItemData: Omit<OrderItem, "id" | "order" | "createdAt" | "updatedAt">
-  ): Promise<OrderItem> {
+    orderItemData:
+      | Omit<OrderItem, "id" | "order" | "createdAt" | "updatedAt">
+      | Omit<OrderItem, "id" | "order" | "createdAt" | "updatedAt">[]
+  ): Promise<OrderItem | OrderItem[]> {
     return await this.orderRepository.manager.transaction(async (transactionalEntityManager) => {
       const order = await this.getOrCreateOpenOrder(userId);
 
-      // Calculate the final price of the item.
-      orderItemData.finalPrice = orderItemData.unitPrice * orderItemData.quantity;
+      const orderItems = Array.isArray(orderItemData) ? orderItemData : [orderItemData];
 
-      const orderItem = this.orderItemRepository.create({
-        ...orderItemData,
-        order,
-      });
+      const savedOrderItems: OrderItem[] = [];
 
-      // Save the order item and update the order status.
-      await transactionalEntityManager.save(orderItem);
+      for (const itemData of orderItems) {
+        // Calculate the final price of the item.
+        itemData.finalPrice = itemData.unitPrice * itemData.quantity;
+
+        const orderItem = this.orderItemRepository.create({
+          ...itemData,
+          order,
+        });
+
+        // Save the order item and update the order status.
+        await transactionalEntityManager.save(orderItem);
+        savedOrderItems.push(orderItem);
+      }
+
       order.status = OrderStatus.OPEN;
 
       if (!order.orderItems) {
         order.orderItems = [];
       }
-      order.orderItems.push(orderItem);
+      order.orderItems.push(...savedOrderItems);
       await transactionalEntityManager.save(order);
 
-      return orderItem;
+      return Array.isArray(orderItemData) ? savedOrderItems : savedOrderItems[0];
     });
   }
 
@@ -80,7 +90,7 @@ export class OrderService {
     userId: number,
     itemName: string,
     newItemData: Omit<OrderItem, "id" | "order" | "createdAt" | "updatedAt">
-  ): Promise<OrderItem> {
+  ): Promise<OrderItem | null> {
     return await this.orderRepository.manager.transaction(async (transactionalEntityManager) => {
       const order = await this.getOrCreateOpenOrder(userId);
 
@@ -88,29 +98,38 @@ export class OrderService {
         throw new Error("No items found in order to modify");
       }
 
-      // Find and remove the existing order item by name.
-      const existingItemIndex = order.orderItems.findIndex(
+      // Find the existing order item by name
+      const existingItem = order.orderItems.find(
         (item) => item.name.toLowerCase() === itemName.toLowerCase()
       );
-      if (existingItemIndex !== -1) {
-        const existingItem = order.orderItems[existingItemIndex];
-        await transactionalEntityManager.remove(existingItem);
-        order.orderItems.splice(existingItemIndex, 1);
+
+      if (!existingItem) {
+        throw new Error(`Item "${itemName}" not found in the order`);
       }
 
-      newItemData.finalPrice = newItemData.unitPrice * newItemData.quantity;
+      // If the new quantity is zero or less, remove the item
+      if (newItemData.quantity <= 0) {
+        await transactionalEntityManager.remove(existingItem);
+        order.orderItems = order.orderItems.filter((item) => item.name !== itemName);
+        await transactionalEntityManager.save(order);
+        return null;
+      }
 
-      // Add the new item to the order.
-      const newOrderItem = this.orderItemRepository.create({
-        ...newItemData,
-        order,
-      });
+      // Update the existing item's quantity and final price
+      existingItem.name = newItemData.name;
+      existingItem.description = newItemData.description;
+      existingItem.quantity = newItemData.quantity;
+      existingItem.unitPrice = newItemData.unitPrice;
+      existingItem.finalPrice = newItemData.unitPrice * newItemData.quantity;
+      existingItem.timeToPrepare = newItemData.timeToPrepare;
 
-      order.status = OrderStatus.OPEN;
-      order.orderItems.push(newOrderItem);
+      // Save the updated item
+      await transactionalEntityManager.save(existingItem);
+
+      // Save the order
       await transactionalEntityManager.save(order);
 
-      return transactionalEntityManager.save(newOrderItem);
+      return existingItem;
     });
   }
 
@@ -137,9 +156,10 @@ export class OrderService {
   /**
    * Processes a refund for the user's most recent completed or in-progress order.
    * @param userId - The ID of the user.
+   * @param reason - The reason for the refund (optional).
    * @returns The refunded order.
    */
-  async refund(userId: number): Promise<Order> {
+  async refund(userId: number, reason?: string): Promise<Order> {
     return await this.orderRepository.manager.transaction(async (transactionalEntityManager) => {
       const order = await transactionalEntityManager.findOne(Order, {
         where: {
@@ -161,6 +181,9 @@ export class OrderService {
 
       order.status = OrderStatus.REFUNDED;
       order.refundAmount = order.price;
+      if (reason) {
+        order.refundReason = reason;
+      }
 
       return transactionalEntityManager.save(order);
     });
@@ -232,6 +255,16 @@ export class OrderService {
       order.expectedDeliveryDate = expectedDeliveryDate;
 
       return transactionalEntityManager.save(order);
+    });
+  }
+
+  /**
+   * Fetches all orders in the system.
+   * @returns All orders.
+   */
+  async getAllOrders(): Promise<Order[]> {
+    return await this.orderRepository.find({
+      relations: ["user", "orderItems"],
     });
   }
 }

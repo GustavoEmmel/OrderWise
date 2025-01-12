@@ -32,6 +32,9 @@ export class Order {
   @Column("decimal", { nullable: true })
   refundAmount?: number;
 
+  @Column("varchar", { nullable: true })
+  refundReason?: string;
+
   @Column({
     type: "varchar", // even thought its an enum, its better to store it as string in case we need to add another one latter
     enum: OrderStatus,

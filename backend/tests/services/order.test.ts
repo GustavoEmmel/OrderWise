@@ -40,244 +40,308 @@ describe("OrderService", () => {
     reset(mockEntityManager);
   });
 
-  it("should return existing order", async () => {
-    const existingOrder = { id: 1, status: OrderStatus.OPEN, user: 1 } as Order;
-    when(
-      mockOrderRepository.findOne(
-        deepEqual({
-          where: { user: 1, status: In([OrderStatus.OPEN, OrderStatus.IN_PROGRESS]) },
-          relations: ["user", "orderItems"],
-        })
-      )
-    ).thenResolve(existingOrder);
+  describe("getUserActiveOrder", () => {
+    it("should return existing order", async () => {
+      const existingOrder = { id: 1, status: OrderStatus.OPEN, user: 1 } as Order;
+      when(
+        mockOrderRepository.findOne(
+          deepEqual({
+            where: { user: 1, status: In([OrderStatus.OPEN, OrderStatus.IN_PROGRESS]) },
+            relations: ["user", "orderItems"],
+          })
+        )
+      ).thenResolve(existingOrder);
 
-    const order = await orderService.getUserActiveOrder(1);
-    console.log("order", order);
-
-    expect(order).toEqual(existingOrder);
+      const order = await orderService.getUserActiveOrder(1);
+      expect(order).toEqual(existingOrder);
+    });
   });
 
-  it("should create a new order if no open order exists", async () => {
-    when(
-      mockOrderRepository.findOne(
-        deepEqual({
-          where: { user: 1, status: In([OrderStatus.OPEN, OrderStatus.IN_PROGRESS]) },
-          relations: ["user", "orderItems"],
-        })
-      )
-    ).thenResolve(null);
-    when(mockOrderRepository.create(anything())).thenReturn([
-      {
+  describe("getOrCreateOpenOrder", () => {
+    it("should create a new order if no open order exists", async () => {
+      when(
+        mockOrderRepository.findOne(
+          deepEqual({
+            where: { user: 1, status: In([OrderStatus.OPEN, OrderStatus.IN_PROGRESS]) },
+            relations: ["user", "orderItems"],
+          })
+        )
+      ).thenResolve(null);
+      when(mockOrderRepository.create(anything())).thenReturn([
+        {
+          id: 1,
+          user: 1,
+          status: OrderStatus.OPEN,
+        },
+      ] as Order[]);
+      when(mockEntityManager.save(anything())).thenResolve({
         id: 1,
         user: 1,
         status: OrderStatus.OPEN,
-      },
-    ] as Order[]);
-    when(mockEntityManager.save(anything())).thenResolve({
-      id: 1,
-      user: 1,
-      status: OrderStatus.OPEN,
-    } as Order);
+      } as Order);
 
-    const order = await orderService.getOrCreateOpenOrder(1);
+      const order = await orderService.getOrCreateOpenOrder(1);
 
-    expect(order).toBeDefined();
-    expect(order.status).toBe(OrderStatus.OPEN);
-    expect(order.user).toBe(1);
+      expect(order).toBeDefined();
+      expect(order.status).toBe(OrderStatus.OPEN);
+      expect(order.user).toBe(1);
+    });
   });
 
-  it("should add an order item to an order", async () => {
-    const order = { id: 1, status: OrderStatus.OPEN, user: 1, orderItems: [] } as unknown as Order;
-    const orderItemData = {
-      name: "Test Item",
-      description: "Test Description",
-      quantity: 1,
-      unitPrice: 10,
-      finalPrice: 10,
-      timeToPrepare: 5,
-    };
+  describe("addOrderItem", () => {
+    it("should add an order item to an order", async () => {
+      const order = {
+        id: 1,
+        status: OrderStatus.OPEN,
+        user: 1,
+        orderItems: [],
+      } as unknown as Order;
+      const orderItemData = {
+        name: "Test Item",
+        description: "Test Description",
+        quantity: 1,
+        unitPrice: 10,
+        finalPrice: 10,
+        timeToPrepare: 5,
+      };
 
-    when(
-      mockOrderRepository.findOne(
-        deepEqual({
-          where: { user: 1, status: OrderStatus.OPEN },
-          relations: ["orderItems"],
-        })
-      )
-    ).thenResolve(order);
+      when(
+        mockOrderRepository.findOne(
+          deepEqual({
+            where: { user: 1, status: OrderStatus.OPEN },
+            relations: ["orderItems"],
+          })
+        )
+      ).thenResolve(order);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    when(mockOrderItemRepository.create(anything())).thenReturn(orderItemData as OrderItem as any);
-    when(mockEntityManager.save(anything())).thenResolve(orderItemData as OrderItem);
-    when(mockEntityManager.save(anything())).thenResolve(order);
+      when(mockOrderItemRepository.create(anything())).thenReturn(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        orderItemData as OrderItem as any
+      );
+      when(mockEntityManager.save(anything())).thenResolve(orderItemData as OrderItem);
+      when(mockEntityManager.save(anything())).thenResolve(order);
 
-    const orderItem = await orderService.addOrderItem(1, orderItemData);
+      const orderItem = (await orderService.addOrderItem(1, orderItemData)) as OrderItem;
 
-    expect(orderItem).toBeDefined();
-    expect(orderItem.name).toBe(orderItemData.name);
+      expect(orderItem).toBeDefined();
+      expect(orderItem.name).toBe(orderItemData.name);
+    });
   });
 
-  it("should modify an existing order item", async () => {
-    const order = {
-      id: 1,
-      status: OrderStatus.OPEN,
-      user: 1,
-      orderItems: [{ id: 1, name: "Test Item", finalPrice: 10 } as OrderItem],
-    } as Order;
-    const newItemData = {
-      name: "New Item",
-      description: "New Description",
-      quantity: 2,
-      unitPrice: 15,
-      finalPrice: 30,
-      timeToPrepare: 10,
-    };
+  describe("modifyOrderItem", () => {
+    it("should modify an existing order item", async () => {
+      const existingItem = {
+        id: 1,
+        name: "Test Item",
+        quantity: 1,
+        unitPrice: 10,
+        finalPrice: 10,
+      } as OrderItem;
 
-    when(
-      mockOrderRepository.findOne(
-        deepEqual({
-          where: { user: 1, status: OrderStatus.OPEN },
-          relations: ["orderItems"],
-        })
-      )
-    ).thenResolve(order);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    when(mockOrderItemRepository.create(anything())).thenReturn(newItemData as OrderItem as any);
-    when(mockEntityManager.save(anything())).thenResolve(newItemData as OrderItem);
-    when(mockEntityManager.save(anything())).thenResolve(order);
+      const order = {
+        id: 1,
+        status: OrderStatus.OPEN,
+        user: 1,
+        orderItems: [existingItem],
+      } as Order;
 
-    const modifiedOrder = (await orderService.modifyOrderItem(
-      1,
-      "Test Item",
-      newItemData
-    )) as unknown as Order;
+      const newItemData = {
+        name: "Test Item",
+        quantity: 2,
+        unitPrice: 15,
+        finalPrice: 30, // unitPrice * quantity
+        timeToPrepare: 10,
+      };
 
-    expect(modifiedOrder).toBeDefined();
-    expect(modifiedOrder.orderItems![0].name).toBe(newItemData.name);
-  });
+      when(mockOrderRepository.findOne(anything())).thenResolve(order);
 
-  it("should update order status", async () => {
-    const order = { id: 1, status: OrderStatus.OPEN, user: 1 } as Order;
+      // Mock save behavior
+      when(mockEntityManager.save(existingItem)).thenResolve({
+        ...existingItem,
+        quantity: newItemData.quantity,
+        finalPrice: newItemData.finalPrice,
+      } as OrderItem);
 
-    when(mockEntityManager.save(Order, anything())).thenResolve({
-      ...order,
-      status: OrderStatus.COMPLETED,
+      when(mockEntityManager.save(order)).thenResolve(order);
+
+      const modifiedOrderItem = await orderService.modifyOrderItem(1, "Test Item", newItemData);
+
+      expect(modifiedOrderItem).toBeDefined();
+      expect(modifiedOrderItem?.name).toBe(newItemData.name);
+      expect(modifiedOrderItem?.quantity).toBe(newItemData.quantity);
+      expect(modifiedOrderItem?.finalPrice).toBe(newItemData.finalPrice);
     });
 
-    const updatedOrder = await orderService.updateOrderStatus(1, OrderStatus.COMPLETED);
+    it("should remove an item from the order if the quantity is zero", async () => {
+      const existingItem = {
+        id: 1,
+        name: "Test Item",
+        quantity: 1,
+        unitPrice: 10,
+        finalPrice: 10,
+      } as OrderItem;
 
-    expect(updatedOrder).toBeDefined();
-    expect(updatedOrder.status).toBe(OrderStatus.COMPLETED);
+      const order = {
+        id: 1,
+        status: OrderStatus.OPEN,
+        user: 1,
+        orderItems: [existingItem],
+      } as Order;
+
+      const newItemData = {
+        name: "Test Item",
+        quantity: 0, // Trigger removal
+        unitPrice: 10,
+        finalPrice: 0,
+        timeToPrepare: 5,
+      };
+
+      when(mockOrderRepository.findOne(anything())).thenResolve(order);
+
+      // Mock remove behavior
+      when(mockEntityManager.remove(existingItem)).thenResolve(existingItem as OrderItem);
+      when(mockEntityManager.save(order)).thenResolve({
+        ...order,
+        orderItems: [],
+      });
+
+      const modifiedOrderItem = await orderService.modifyOrderItem(1, "Test Item", newItemData);
+
+      expect(modifiedOrderItem).toBeNull(); // Expect null since the item is removed
+      expect(order.orderItems!.length).toBe(0); // Ensure the item is removed from the order
+    });
   });
 
-  it("should refund an order", async () => {
-    const order = { id: 1, status: OrderStatus.COMPLETED, user: 1, price: 100 } as Order;
+  describe("updateOrderStatus", () => {
+    it("should update order status", async () => {
+      const order = { id: 1, status: OrderStatus.OPEN, user: 1 } as Order;
 
-    when(mockEntityManager.findOne(Order, anything())).thenResolve(order);
-    when(mockEntityManager.save(anything())).thenResolve({
-      ...order,
-      status: OrderStatus.REFUNDED,
-      refundAmount: 100,
+      when(mockEntityManager.save(Order, anything())).thenResolve({
+        ...order,
+        status: OrderStatus.COMPLETED,
+      });
+
+      const updatedOrder = await orderService.updateOrderStatus(1, OrderStatus.COMPLETED);
+
+      expect(updatedOrder).toBeDefined();
+      expect(updatedOrder.status).toBe(OrderStatus.COMPLETED);
+    });
+  });
+
+  describe("refund", () => {
+    it("should refund an order", async () => {
+      const order = { id: 1, status: OrderStatus.COMPLETED, user: 1, price: 100 } as Order;
+
+      when(mockEntityManager.findOne(Order, anything())).thenResolve(order);
+      when(mockEntityManager.save(anything())).thenResolve({
+        ...order,
+        status: OrderStatus.REFUNDED,
+        refundAmount: 100,
+      });
+
+      const refundedOrder = await orderService.refund(1);
+      expect(refundedOrder).toBeDefined();
+      expect(refundedOrder.status).toBe(OrderStatus.REFUNDED);
+      expect(refundedOrder.refundAmount).toBe(100);
     });
 
-    const refundedOrder = await orderService.refund(1);
-    expect(refundedOrder).toBeDefined();
-    expect(refundedOrder.status).toBe(OrderStatus.REFUNDED);
-    expect(refundedOrder.refundAmount).toBe(100);
-  });
+    it("should throw an error if no order found to refund", async () => {
+      when(
+        mockOrderRepository.findOne(
+          deepEqual({
+            where: { user: 1, status: In([OrderStatus.IN_PROGRESS, OrderStatus.COMPLETED]) },
+            order: { createdAt: "DESC" },
+          })
+        )
+      ).thenResolve(null);
 
-  it("should check if user has open order with items", async () => {
-    const order = {
-      id: 1,
-      status: OrderStatus.OPEN,
-      user: 1,
-      orderItems: [{ id: 1, name: "Test Item" } as OrderItem],
-    } as Order;
-
-    when(
-      mockOrderRepository.findOne(
-        deepEqual({
-          where: { user: 1, status: OrderStatus.OPEN },
-          relations: ["orderItems"],
-        })
-      )
-    ).thenResolve(order);
-
-    const hasOpenOrderWithItems = await orderService.hasOpenOrderWithItems(1);
-    expect(hasOpenOrderWithItems).toBe(true);
-  });
-
-  it("should close an order", async () => {
-    const order = {
-      id: 1,
-      status: OrderStatus.OPEN,
-      user: 1,
-      orderItems: [{ id: 1, name: "Test Item", finalPrice: 10, timeToPrepare: 5 } as OrderItem],
-    } as Order;
-
-    when(
-      mockEntityManager.findOne(
-        Order,
-        deepEqual({
-          where: { user: 1, status: OrderStatus.OPEN },
-          relations: ["orderItems"],
-        })
-      )
-    ).thenResolve(order);
-    when(mockEntityManager.save(anything())).thenResolve({
-      ...order,
-      status: OrderStatus.IN_PROGRESS,
-      price: 10,
-      expectedDeliveryDate: new Date(),
+      await expect(orderService.refund(1)).rejects.toThrow("No order found to refund");
     });
 
-    const closedOrder = await orderService.closeOrder(1);
+    it("should throw an error if order is already refunded", async () => {
+      const order = { id: 1, status: OrderStatus.REFUNDED, user: 1, price: 100 } as Order;
 
-    expect(closedOrder).toBeDefined();
-    expect(closedOrder.status).toBe(OrderStatus.IN_PROGRESS);
-    expect(closedOrder.price).toBe(10);
-    expect(closedOrder.expectedDeliveryDate).toBeInstanceOf(Date);
+      when(
+        mockEntityManager.findOne(
+          Order,
+          deepEqual({
+            where: { user: 1, status: In([OrderStatus.IN_PROGRESS, OrderStatus.COMPLETED]) },
+            order: { createdAt: "DESC" },
+          })
+        )
+      ).thenResolve(order);
+
+      await expect(orderService.refund(1)).rejects.toThrow("Order is already refunded");
+    });
   });
 
-  it("should throw an error if no open order found to close", async () => {
-    when(
-      mockOrderRepository.findOne(
-        deepEqual({
-          where: { user: 1, status: OrderStatus.OPEN },
-          relations: ["orderItems"],
-        })
-      )
-    ).thenResolve(null);
+  describe("hasOpenOrderWithItems", () => {
+    it("should check if user has open order with items", async () => {
+      const order = {
+        id: 1,
+        status: OrderStatus.OPEN,
+        user: 1,
+        orderItems: [{ id: 1, name: "Test Item" } as OrderItem],
+      } as Order;
 
-    await expect(orderService.closeOrder(1)).rejects.toThrow("No open order found to close");
+      when(
+        mockOrderRepository.findOne(
+          deepEqual({
+            where: { user: 1, status: OrderStatus.OPEN },
+            relations: ["orderItems"],
+          })
+        )
+      ).thenResolve(order);
+
+      const hasOpenOrderWithItems = await orderService.hasOpenOrderWithItems(1);
+      expect(hasOpenOrderWithItems).toBe(true);
+    });
   });
 
-  it("should throw an error if no order found to refund", async () => {
-    when(
-      mockOrderRepository.findOne(
-        deepEqual({
-          where: { user: 1, status: In([OrderStatus.IN_PROGRESS, OrderStatus.COMPLETED]) },
-          order: { createdAt: "DESC" },
-        })
-      )
-    ).thenResolve(null);
+  describe("closeOrder", () => {
+    it("should close an order", async () => {
+      const order = {
+        id: 1,
+        status: OrderStatus.OPEN,
+        user: 1,
+        orderItems: [{ id: 1, name: "Test Item", finalPrice: 10, timeToPrepare: 5 } as OrderItem],
+      } as Order;
 
-    await expect(orderService.refund(1)).rejects.toThrow("No order found to refund");
-  });
+      when(
+        mockEntityManager.findOne(
+          Order,
+          deepEqual({
+            where: { user: 1, status: OrderStatus.OPEN },
+            relations: ["orderItems"],
+          })
+        )
+      ).thenResolve(order);
+      when(mockEntityManager.save(anything())).thenResolve({
+        ...order,
+        status: OrderStatus.IN_PROGRESS,
+        price: 10,
+        expectedDeliveryDate: new Date(),
+      });
 
-  it("should throw an error if order is already refunded", async () => {
-    const order = { id: 1, status: OrderStatus.REFUNDED, user: 1, price: 100 } as Order;
+      const closedOrder = await orderService.closeOrder(1);
 
-    when(
-      mockEntityManager.findOne(
-        Order,
-        deepEqual({
-          where: { user: 1, status: In([OrderStatus.IN_PROGRESS, OrderStatus.COMPLETED]) },
-          order: { createdAt: "DESC" },
-        })
-      )
-    ).thenResolve(order);
+      expect(closedOrder).toBeDefined();
+      expect(closedOrder.status).toBe(OrderStatus.IN_PROGRESS);
+      expect(closedOrder.price).toBe(10);
+      expect(closedOrder.expectedDeliveryDate).toBeInstanceOf(Date);
+    });
 
-    await expect(orderService.refund(1)).rejects.toThrow("Order is already refunded");
+    it("should throw an error if no open order found to close", async () => {
+      when(
+        mockOrderRepository.findOne(
+          deepEqual({
+            where: { user: 1, status: OrderStatus.OPEN },
+            relations: ["orderItems"],
+          })
+        )
+      ).thenResolve(null);
+
+      await expect(orderService.closeOrder(1)).rejects.toThrow("No open order found to close");
+    });
   });
 });
