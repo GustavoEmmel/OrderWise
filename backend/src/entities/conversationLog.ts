@@ -19,7 +19,7 @@ export class ConversationLog {
   id!: number;
 
   @ManyToOne(() => User, (user) => user.id)
-  user!: User;
+  user!: number;
 
   @Column("text")
   prompt!: string;
@@ -29,12 +29,6 @@ export class ConversationLog {
     enum: Origin,
   })
   origin!: Origin;
-
-  @Column({
-    type: "boolean",
-    default: true,
-  })
-  acknowledged!: boolean;
 
   @CreateDateColumn()
   createdAt!: Date;

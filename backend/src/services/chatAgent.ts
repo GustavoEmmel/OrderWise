@@ -44,7 +44,7 @@ Understand the user's intent regarding their order. Possible intents include:
 - "place_order": When the user wants to add items to their order.
 - "update_order": When the user wants to modify their order (add, remove, or replace items).
 - "finalize_order": When the user wants to confirm and finalize their order.
-- "ask_status": When the user asks about the status, progress, or details of their order.
+- "ask_status": When the user asks about the status, progress, or details of their order (eg., When will it arrive? or Is it on its way?).
 - "refund_request": When the user requests a refund for their order.
 - "recommendation_request": When the user asks for a recommendation based on criteria like spiciness, vegetarian, or time.
 

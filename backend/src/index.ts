@@ -9,8 +9,10 @@ import { initializeWebSocketServer } from "./plugins/websocket-server";
 import healthRouter from "./routes/health";
 import chatRouter from "./routes/chat";
 import orderRouter from "./routes/order";
+import logRouter from "./routes/log";
 import rateLimit from "express-rate-limit";
 import { orderServiceProvider } from "./middlewares/orderServiceProvider";
+import { conversationLogServiceProvider } from "./middlewares/conversationLogServiceProvider";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -38,11 +40,14 @@ initializeWebSocketServer(4000);
 
 // Middleware
 app.use(express.json());
-app.use(orderServiceProvider); // Use the service provider middleware
+app.use(orderServiceProvider); // Use the service provider middleware to inject the order service
+app.use(conversationLogServiceProvider); // Use the service provider middleware to inject the conversation log service
 
-app.use("/health", healthRouter);
-app.use("/chat", chatRouter);
-app.use("/order", orderRouter);
+// Routes
+app.use("/v1/health", healthRouter);
+app.use("/v1/chat", chatRouter);
+app.use("/v1/order", orderRouter);
+app.use("/v1/log", logRouter);
 
 // Start Server
 app.listen(PORT, () => {

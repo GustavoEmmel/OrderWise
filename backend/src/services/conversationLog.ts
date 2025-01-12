@@ -1,0 +1,20 @@
+import { ConversationLog, Origin } from "../entities/conversationLog";
+import { Repository } from "typeorm";
+
+export class ConversationLogService {
+  private conversationLogRepository: Repository<ConversationLog>;
+
+  constructor(conversationLogRepository: Repository<ConversationLog>) {
+    this.conversationLogRepository = conversationLogRepository;
+  }
+
+  // Log a new conversation
+  async logConversation(prompt: string, user: number, origin: Origin): Promise<void> {
+    const newConversation = this.conversationLogRepository.create({ prompt, user, origin });
+    await this.conversationLogRepository.save(newConversation);
+  }
+
+  loadConversationLog(userId: number): Promise<ConversationLog[]> {
+    return this.conversationLogRepository.find({ where: { user: userId } });
+  }
+}
