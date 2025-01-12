@@ -65,6 +65,14 @@ export const menuData: MenuData = {
         tags: ["drink", "cold", "refreshing"],
       },
       {
+        name: "Juice",
+        description: "A refreshing blend of fruit juices, perfect for a sunny day.",
+        ingredients: ["water", "sugar", "fruit juice"],
+        price: 2.99,
+        timeToPrepare: 4,
+        tags: ["drink", "cold", "refreshing"],
+      },
+      {
         name: "Apple Pie",
         description: "A classic dessert filled with warm apple goodness.",
         ingredients: ["apples", "sugar", "pastry"],
