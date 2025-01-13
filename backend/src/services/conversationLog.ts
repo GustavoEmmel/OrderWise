@@ -2,6 +2,7 @@ import { ConversationLog, Origin } from "../entities/conversationLog";
 import { ensureDatabaseConnection } from "../config/database";
 
 import { Repository } from "typeorm";
+import { publish } from "./realtime";
 
 export class ConversationLogService {
   private conversationLogRepository: Repository<ConversationLog>;
@@ -19,6 +20,9 @@ export class ConversationLogService {
   async logConversation(prompt: string, user: number, origin: Origin): Promise<void> {
     const newConversation = this.conversationLogRepository.create({ prompt, user, origin });
     await this.conversationLogRepository.save(newConversation);
+
+    const conversations = await this.loadConversationLog(user);
+    await publish("conversation-log", "new-conversation", conversations);
   }
 
   async loadConversationLog(userId: number): Promise<ConversationLog[]> {

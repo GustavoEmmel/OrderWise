@@ -2,6 +2,7 @@ import { Repository, In } from "typeorm";
 import { Order, OrderStatus } from "../entities/order";
 import { OrderItem } from "../entities/orderItem";
 import { ensureDatabaseConnection } from "../config/database";
+import { publish } from "./realtime";
 
 /**
  * Service to manage orders and their related operations.
@@ -81,8 +82,15 @@ export class OrderService {
       order.orderItems.push(...savedOrderItems);
       await transactionalEntityManager.save(order);
 
+      await this.sendRealTimeUpdate();
+
       return Array.isArray(orderItemData) ? savedOrderItems : savedOrderItems[0];
     });
+  }
+
+  async sendRealTimeUpdate() {
+    const orders = await this.getAllOrders();
+    await publish("order", "new-order", orders);
   }
 
   /**
@@ -135,6 +143,8 @@ export class OrderService {
       // Save the order
       await transactionalEntityManager.save(order);
 
+      await this.sendRealTimeUpdate();
+
       return existingItem;
     });
   }
@@ -155,7 +165,11 @@ export class OrderService {
         });
       }
 
-      return transactionalEntityManager.save(Order, { id: orderId, status });
+      const savedOrder = await transactionalEntityManager.save(Order, { id: orderId, status });
+
+      await this.sendRealTimeUpdate();
+
+      return savedOrder;
     });
   }
 
@@ -191,7 +205,11 @@ export class OrderService {
         order.refundReason = reason;
       }
 
-      return transactionalEntityManager.save(order);
+      const savedOrder = await transactionalEntityManager.save(order);
+
+      await this.sendRealTimeUpdate();
+
+      return savedOrder;
     });
   }
 
@@ -260,7 +278,10 @@ export class OrderService {
       expectedDeliveryDate.setMinutes(expectedDeliveryDate.getMinutes() + maxTimeToPrepare);
       order.expectedDeliveryDate = expectedDeliveryDate;
 
-      return transactionalEntityManager.save(order);
+      const savedOrder = await transactionalEntityManager.save(order);
+      await this.sendRealTimeUpdate();
+
+      return savedOrder;
     });
   }
 
