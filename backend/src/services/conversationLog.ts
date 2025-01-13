@@ -18,6 +18,8 @@ export class ConversationLogService {
 
   // Log a new conversation
   async logConversation(prompt: string, user: number, origin: Origin): Promise<void> {
+    await ensureDatabaseConnection(); // Ensure connection is established once connection was failing in Vercel
+
     const newConversation = this.conversationLogRepository.create({ prompt, user, origin });
     await this.conversationLogRepository.save(newConversation);
 
@@ -26,6 +28,8 @@ export class ConversationLogService {
   }
 
   async loadConversationLog(userId: number): Promise<ConversationLog[]> {
+    await ensureDatabaseConnection(); // Ensure connection is established once connection was failing in Vercel
+
     return this.conversationLogRepository.find({ where: { user: userId } });
   }
 }
