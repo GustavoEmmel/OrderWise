@@ -4,6 +4,7 @@ dotenv.config();
 import "reflect-metadata";
 import express from "express";
 
+import cors from "cors";
 import { AppDataSource } from "./config/database";
 import { initializeWebSocketServer } from "./plugins/websocket-server";
 import healthRouter from "./routes/health";
@@ -15,7 +16,16 @@ import { orderServiceProvider } from "./middlewares/orderServiceProvider";
 import { conversationLogServiceProvider } from "./middlewares/conversationLogServiceProvider";
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 4000;
+
+// Enable CORS for all origins
+app.use(
+  cors({
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 
 // Rate limit configuration
 const limiter = rateLimit({
@@ -36,7 +46,7 @@ AppDataSource.initialize()
   .catch((err) => console.error("Database connection error:", err));
 
 // Initialize WebSocket
-initializeWebSocketServer(4000);
+initializeWebSocketServer(4004);
 
 // Middleware
 app.use(express.json());
