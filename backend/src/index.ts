@@ -6,7 +6,7 @@ import express from "express";
 
 import cors from "cors";
 import { AppDataSource } from "./config/database";
-import { initializeWebSocketServer } from "./plugins/websocket-server";
+// import { initializeWebSocketServer } from "./plugins/websocket-server";
 import healthRouter from "./routes/health";
 import chatRouter from "./routes/chat";
 import orderRouter from "./routes/order";
@@ -46,7 +46,7 @@ AppDataSource.initialize()
   .catch((err) => console.error("Database connection error:", err));
 
 // Initialize WebSocket
-initializeWebSocketServer(4004);
+// initializeWebSocketServer(4004);
 
 // Middleware
 app.use(express.json());
