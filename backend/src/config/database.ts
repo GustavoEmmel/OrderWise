@@ -4,11 +4,6 @@ import { OrderItem } from "../entities/orderItem";
 import { User } from "../entities/user";
 import { ConversationLog } from "../entities/conversationLog";
 
-console.log("DB_HOST", process.env.DB_HOST);
-console.log("DB_USER", process.env.DB_USER);
-console.log("DB_PASSWORD", process.env.DB_PASSWORD);
-console.log("DB_NAME", process.env.DB_NAME);
-
 export const AppDataSource = new DataSource({
   type: "postgres",
   host: process.env.DB_HOST || "localhost",
@@ -23,19 +18,31 @@ export const AppDataSource = new DataSource({
   ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: false } : undefined,
   extra: {
     ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: false } : undefined,
-    connectionTimeoutMillis: 30000, // 30 seconds
-    idleTimeoutMillis: 30000, // 30 seconds
+    connectionTimeoutMillis: 60000, // 60 seconds
+    idleTimeoutMillis: 60000, // 60 seconds
   },
 });
 
 export let isInitialized = false;
 
-AppDataSource.initialize()
-  .then(() => {
+const MAX_RETRIES = 5;
+const RETRY_DELAY = 5000; // 5 seconds
+
+async function initializeDatabase(retries = 0): Promise<void> {
+  try {
+    await AppDataSource.initialize();
     console.log("Database connected");
     isInitialized = true;
-  })
-  .catch((err) => {
-    console.error("Database connection error:", err);
-    isInitialized = false;
-  });
+  } catch (err) {
+    console.error(`Database connection error: ${err}`);
+    if (retries < MAX_RETRIES) {
+      console.log(`Retrying to connect to the database (${retries + 1}/${MAX_RETRIES})...`);
+      setTimeout(() => initializeDatabase(retries + 1), RETRY_DELAY);
+    } else {
+      console.error("Max retries reached. Could not connect to the database.");
+      isInitialized = false;
+    }
+  }
+}
+
+initializeDatabase();
