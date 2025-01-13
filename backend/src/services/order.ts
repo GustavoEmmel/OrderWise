@@ -1,6 +1,7 @@
 import { Repository, In } from "typeorm";
 import { Order, OrderStatus } from "../entities/order";
 import { OrderItem } from "../entities/orderItem";
+import { ensureDatabaseConnection } from "../config/database";
 
 /**
  * Service to manage orders and their related operations.
@@ -13,6 +14,11 @@ export class OrderService {
   constructor(orderRepository: Repository<Order>, orderItemRepository: Repository<OrderItem>) {
     this.orderRepository = orderRepository;
     this.orderItemRepository = orderItemRepository;
+    this.initialize();
+  }
+
+  private async initialize() {
+    await ensureDatabaseConnection(); // Ensure connection is established once connection was failing in Vercel
   }
 
   /**

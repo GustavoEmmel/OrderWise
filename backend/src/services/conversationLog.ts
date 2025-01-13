@@ -12,7 +12,7 @@ export class ConversationLogService {
   }
 
   private async initialize() {
-    await ensureDatabaseConnection(); // Ensure connection is established once
+    await ensureDatabaseConnection(); // Ensure connection is established once connection was failing in Vercel
   }
 
   // Log a new conversation
