@@ -5,6 +5,15 @@ import { Order, OrderStatus } from "../../src/entities/order";
 import { OrderItem } from "../../src/entities/orderItem";
 import { Repository, EntityManager, In } from "typeorm";
 
+// Mock the ensureDatabaseConnection and publish functions
+vi.mock("../../src/config/database", () => ({
+  ensureDatabaseConnection: vi.fn().mockResolvedValue(void 0),
+}));
+
+vi.mock("../../src/services/realtime", () => ({
+  publish: vi.fn().mockResolvedValue(void 0),
+}));
+
 describe("OrderService", () => {
   let mockOrderRepository: Repository<Order>;
   let mockOrderItemRepository: Repository<OrderItem>;

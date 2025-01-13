@@ -80,6 +80,10 @@ export class OrderService {
         order.orderItems = [];
       }
       order.orderItems.push(...savedOrderItems);
+
+      // get total price from order items to save on order
+      order.price = order.orderItems.reduce((total, item) => total + Number(item.finalPrice), 0);
+
       await transactionalEntityManager.save(order);
 
       await this.sendRealTimeUpdate();
@@ -139,6 +143,9 @@ export class OrderService {
 
       // Save the updated item
       await transactionalEntityManager.save(existingItem);
+
+      // Update the order price
+      order.price = order.orderItems.reduce((total, item) => total + Number(item.finalPrice), 0);
 
       // Save the order
       await transactionalEntityManager.save(order);
