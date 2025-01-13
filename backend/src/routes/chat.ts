@@ -2,9 +2,21 @@ import { Router, Request, Response } from "express";
 import { chatAgent } from "../services/chatAgent";
 import { Origin } from "../entities/conversationLog";
 
+import { validateSchema } from "../middlewares/validateSchema";
+import { z } from "zod";
+
 const router = Router();
 
-router.post("/", async (req: Request, res: Response) => {
+const messageSchema = z.object({
+  role: z.enum(["user", "system", "assistant"]), // Restricts role to specific values
+  content: z.string().min(1, "Content cannot be empty"), // Ensures content is a non-empty string
+});
+
+const chatSchema = z.object({
+  messages: z.array(messageSchema).nonempty("Messages array must contain at least one message"), // Ensures the array is not empty
+});
+
+router.post("/", validateSchema(chatSchema), async (req: Request, res: Response) => {
   const { orderService, conversationLogService } = req;
 
   try {
