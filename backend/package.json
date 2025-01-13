@@ -7,7 +7,7 @@
     "docker:down": "docker-compose down",
     "check-db": "docker exec orderwise-postgres pg_isready -U admin",
     "wait-for-db": "bash -c 'until docker exec orderwise-postgres pg_isready -U admin; do echo \"Waiting for the database...\"; sleep 2; done;'",
-    "dev": "npm run docker:up && npm run wait-for-db && npm run migrate && ts-node-dev --respawn --transpile-only src/index.ts",
+    "dev": "npm run docker:up && npm run wait-for-db && ts-node-dev --respawn --transpile-only src/index.ts",
     "start": "npm run docker:up && node dist/index.js",
     "build": "tsc",
     "test": "vitest --no-file-parallelism --watch=false",
