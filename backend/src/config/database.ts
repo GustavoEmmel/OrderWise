@@ -4,6 +4,8 @@ import { OrderItem } from "../entities/orderItem";
 import { User } from "../entities/user";
 import { ConversationLog } from "../entities/conversationLog";
 
+const ssl = process.env.DB_SSL === "true";
+
 export const AppDataSource = new DataSource({
   type: "postgres",
   host: process.env.DB_HOST || "localhost",
@@ -15,4 +17,5 @@ export const AppDataSource = new DataSource({
   migrations: ["src/migrations/*.ts"],
   logging: false, // Disable in production
   synchronize: true, // Disable in production
+  ssl: ssl ? { rejectUnauthorized: false } : undefined,
 });
