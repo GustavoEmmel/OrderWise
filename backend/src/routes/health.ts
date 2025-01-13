@@ -1,25 +1,13 @@
-import { Router, Request, Response } from "express";
-import { DataSource } from "typeorm";
+import express from "express";
+import { isInitialized } from "../config/database";
 
-const router = Router();
+const router = express.Router();
 
-router.get("/", async (req: Request, res: Response) => {
-  const dataSource = req.app.get("dataSource") as DataSource;
-
-  try {
-    if (!dataSource.isInitialized) {
-      res.status(500).json({ status: "error", message: "Database not connected" });
-    }
-
-    //Perform a database test
-    await dataSource.query("SELECT 1");
-
-    res.json({ status: "ok", message: "Server is healthy" });
-  } catch (err) {
-    console.error("Health check failed:", err);
-    res
-      .status(500)
-      .json({ status: "error", message: "Health check failed", error: (err as Error).message });
+router.get("/", (req, res) => {
+  if (isInitialized) {
+    res.status(200).json({ status: "ok" });
+  } else {
+    res.status(500).json({ status: "error", message: "Database not initialized" });
   }
 });
 
