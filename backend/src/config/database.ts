@@ -23,26 +23,17 @@ export const AppDataSource = new DataSource({
   },
 });
 
-export let isInitialized = false;
+let isConnected = false;
 
-const MAX_RETRIES = 5;
-const RETRY_DELAY = 5000; // 5 seconds
-
-async function initializeDatabase(retries = 0): Promise<void> {
-  try {
-    await AppDataSource.initialize();
-    console.log("Database connected");
-    isInitialized = true;
-  } catch (err) {
-    console.error(`Database connection error: ${err}`);
-    if (retries < MAX_RETRIES) {
-      console.log(`Retrying to connect to the database (${retries + 1}/${MAX_RETRIES})...`);
-      setTimeout(() => initializeDatabase(retries + 1), RETRY_DELAY);
-    } else {
-      console.error("Max retries reached. Could not connect to the database.");
-      isInitialized = false;
+export async function ensureDatabaseConnection(): Promise<void> {
+  if (!AppDataSource.isInitialized && !isConnected) {
+    try {
+      await AppDataSource.initialize();
+      console.log("Database connected");
+      isConnected = true;
+    } catch (err) {
+      console.error("Error initializing database connection:", err);
+      throw err;
     }
   }
 }
-
-initializeDatabase();
