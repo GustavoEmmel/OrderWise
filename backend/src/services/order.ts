@@ -57,47 +57,54 @@ export class OrderService {
   ): Promise<OrderItem | OrderItem[]> {
     await ensureDatabaseConnection(); // Ensure connection is established once connection was failing in Vercel
 
-    return await this.orderRepository.manager.transaction(async (transactionalEntityManager) => {
-      const order = await this.getOrCreateOpenOrder(userId);
+    const savedOrder = await this.orderRepository.manager.transaction(
+      async (transactionalEntityManager) => {
+        const order = await this.getOrCreateOpenOrder(userId);
 
-      const orderItems = Array.isArray(orderItemData) ? orderItemData : [orderItemData];
+        const orderItems = Array.isArray(orderItemData) ? orderItemData : [orderItemData];
 
-      const savedOrderItems: OrderItem[] = [];
+        const savedOrderItems: OrderItem[] = [];
 
-      for (const itemData of orderItems) {
-        // Calculate the final price of the item.
-        itemData.finalPrice = itemData.unitPrice * itemData.quantity;
+        for (const itemData of orderItems) {
+          // Calculate the final price of the item.
+          itemData.finalPrice = itemData.unitPrice * itemData.quantity;
 
-        const orderItem = this.orderItemRepository.create({
-          ...itemData,
-          order,
-        });
+          const orderItem = this.orderItemRepository.create({
+            ...itemData,
+            order,
+          });
 
-        // Save the order item and update the order status.
-        await transactionalEntityManager.save(orderItem);
-        savedOrderItems.push(orderItem);
+          // Save the order item and update the order status.
+          await transactionalEntityManager.save(orderItem);
+          savedOrderItems.push(orderItem);
+        }
+
+        order.status = OrderStatus.OPEN;
+
+        if (!order.orderItems) {
+          order.orderItems = [];
+        }
+        order.orderItems.push(...savedOrderItems);
+
+        // get total price from order items to save on order
+        order.price = order.orderItems.reduce((total, item) => total + Number(item.finalPrice), 0);
+
+        await transactionalEntityManager.save(order);
+
+        return Array.isArray(orderItemData) ? savedOrderItems : savedOrderItems[0];
       }
+    );
 
-      order.status = OrderStatus.OPEN;
+    await this.sendRealTimeUpdate();
 
-      if (!order.orderItems) {
-        order.orderItems = [];
-      }
-      order.orderItems.push(...savedOrderItems);
-
-      // get total price from order items to save on order
-      order.price = order.orderItems.reduce((total, item) => total + Number(item.finalPrice), 0);
-
-      await transactionalEntityManager.save(order);
-
-      await this.sendRealTimeUpdate();
-
-      return Array.isArray(orderItemData) ? savedOrderItems : savedOrderItems[0];
-    });
+    return savedOrder;
   }
 
   async sendRealTimeUpdate() {
     const orders = await this.getAllOrders();
+
+    console.log("Sending real-time update", orders);
+
     await publish("order", "new-order", orders);
   }
 
@@ -115,51 +122,55 @@ export class OrderService {
   ): Promise<OrderItem | null> {
     await ensureDatabaseConnection(); // Ensure connection is established once connection was failing in Vercel
 
-    return await this.orderRepository.manager.transaction(async (transactionalEntityManager) => {
-      const order = await this.getOrCreateOpenOrder(userId);
+    const savedItem = await this.orderRepository.manager.transaction(
+      async (transactionalEntityManager) => {
+        const order = await this.getOrCreateOpenOrder(userId);
 
-      if (!order.orderItems || order.orderItems.length === 0) {
-        throw new Error("No items found in order to modify");
-      }
+        if (!order.orderItems || order.orderItems.length === 0) {
+          throw new Error("No items found in order to modify");
+        }
 
-      // Find the existing order item by name
-      const existingItem = order.orderItems.find(
-        (item) => item.name.toLowerCase() === itemName.toLowerCase()
-      );
+        // Find the existing order item by name
+        const existingItem = order.orderItems.find(
+          (item) => item.name.toLowerCase() === itemName.toLowerCase()
+        );
 
-      if (!existingItem) {
-        throw new Error(`Item "${itemName}" not found in the order`);
-      }
+        if (!existingItem) {
+          throw new Error(`Item "${itemName}" not found in the order`);
+        }
 
-      // If the new quantity is zero or less, remove the item
-      if (newItemData.quantity <= 0) {
-        await transactionalEntityManager.remove(existingItem);
-        order.orderItems = order.orderItems.filter((item) => item.name !== itemName);
+        // If the new quantity is zero or less, remove the item
+        if (newItemData.quantity <= 0) {
+          await transactionalEntityManager.remove(existingItem);
+          order.orderItems = order.orderItems.filter((item) => item.name !== itemName);
+          await transactionalEntityManager.save(order);
+          return null;
+        }
+
+        // Update the existing item's quantity and final price
+        existingItem.name = newItemData.name;
+        existingItem.description = newItemData.description;
+        existingItem.quantity = newItemData.quantity;
+        existingItem.unitPrice = newItemData.unitPrice;
+        existingItem.finalPrice = newItemData.unitPrice * newItemData.quantity;
+        existingItem.timeToPrepare = newItemData.timeToPrepare;
+
+        // Save the updated item
+        await transactionalEntityManager.save(existingItem);
+
+        // Update the order price
+        order.price = order.orderItems.reduce((total, item) => total + Number(item.finalPrice), 0);
+
+        // Save the order
         await transactionalEntityManager.save(order);
-        return null;
+
+        return existingItem;
       }
+    );
 
-      // Update the existing item's quantity and final price
-      existingItem.name = newItemData.name;
-      existingItem.description = newItemData.description;
-      existingItem.quantity = newItemData.quantity;
-      existingItem.unitPrice = newItemData.unitPrice;
-      existingItem.finalPrice = newItemData.unitPrice * newItemData.quantity;
-      existingItem.timeToPrepare = newItemData.timeToPrepare;
+    await this.sendRealTimeUpdate();
 
-      // Save the updated item
-      await transactionalEntityManager.save(existingItem);
-
-      // Update the order price
-      order.price = order.orderItems.reduce((total, item) => total + Number(item.finalPrice), 0);
-
-      // Save the order
-      await transactionalEntityManager.save(order);
-
-      await this.sendRealTimeUpdate();
-
-      return existingItem;
-    });
+    return savedItem;
   }
 
   /**
@@ -274,38 +285,43 @@ export class OrderService {
   async closeOrder(userId: number): Promise<Order> {
     await ensureDatabaseConnection(); // Ensure connection is established once connection was failing in Vercel
 
-    return await this.orderRepository.manager.transaction(async (transactionalEntityManager) => {
-      const order = await transactionalEntityManager.findOne(Order, {
-        where: {
-          user: userId,
-          status: OrderStatus.OPEN,
-        },
-        relations: ["orderItems"],
-      });
+    const savedOrder = await this.orderRepository.manager.transaction(
+      async (transactionalEntityManager) => {
+        const order = await transactionalEntityManager.findOne(Order, {
+          where: {
+            user: userId,
+            status: OrderStatus.OPEN,
+          },
+          relations: ["orderItems"],
+        });
 
-      if (!order) {
-        throw new Error("No open order found to close");
+        if (!order) {
+          throw new Error("No open order found to close");
+        }
+
+        if (!order.orderItems || order.orderItems.length === 0) {
+          throw new Error("No items found in order to close");
+        }
+
+        // Transition the order to in-progress and calculate the total price.
+        order.status = OrderStatus.IN_PROGRESS;
+        order.price = order.orderItems.reduce((total, item) => total + Number(item.finalPrice), 0);
+
+        // Calculate the expected delivery time based on preparation time.
+        const maxTimeToPrepare = Math.max(...order.orderItems.map((item) => item.timeToPrepare));
+        const expectedDeliveryDate = new Date();
+        expectedDeliveryDate.setMinutes(expectedDeliveryDate.getMinutes() + maxTimeToPrepare);
+        order.expectedDeliveryDate = expectedDeliveryDate;
+
+        const savedOrder = await transactionalEntityManager.save(order);
+
+        return savedOrder;
       }
+    );
 
-      if (!order.orderItems || order.orderItems.length === 0) {
-        throw new Error("No items found in order to close");
-      }
+    await this.sendRealTimeUpdate();
 
-      // Transition the order to in-progress and calculate the total price.
-      order.status = OrderStatus.IN_PROGRESS;
-      order.price = order.orderItems.reduce((total, item) => total + Number(item.finalPrice), 0);
-
-      // Calculate the expected delivery time based on preparation time.
-      const maxTimeToPrepare = Math.max(...order.orderItems.map((item) => item.timeToPrepare));
-      const expectedDeliveryDate = new Date();
-      expectedDeliveryDate.setMinutes(expectedDeliveryDate.getMinutes() + maxTimeToPrepare);
-      order.expectedDeliveryDate = expectedDeliveryDate;
-
-      const savedOrder = await transactionalEntityManager.save(order);
-      await this.sendRealTimeUpdate();
-
-      return savedOrder;
-    });
+    return savedOrder;
   }
 
   /**
