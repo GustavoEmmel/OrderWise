@@ -143,6 +143,11 @@ export class OrderService {
         if (newItemData.quantity <= 0) {
           await transactionalEntityManager.remove(existingItem);
           order.orderItems = order.orderItems.filter((item) => item.name !== itemName);
+          // Update the order price
+          order.price = order.orderItems.reduce(
+            (total, item) => total + Number(item.finalPrice),
+            0
+          );
           await transactionalEntityManager.save(order);
           return null;
         }
