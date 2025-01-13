@@ -38,6 +38,8 @@ const limiter = rateLimit({
 // Apply rate limit to all requests
 app.use(limiter);
 
+app.set("trust proxy", 1);
+
 // Initialize Database
 AppDataSource.initialize()
   .then(() => {
