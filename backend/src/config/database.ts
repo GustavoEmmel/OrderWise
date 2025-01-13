@@ -4,6 +4,11 @@ import { OrderItem } from "../entities/orderItem";
 import { User } from "../entities/user";
 import { ConversationLog } from "../entities/conversationLog";
 
+console.log("DB_HOST", process.env.DB_HOST);
+console.log("DB_USER", process.env.DB_USER);
+console.log("DB_PASSWORD", process.env.DB_PASSWORD);
+console.log("DB_NAME", process.env.DB_NAME);
+
 export const AppDataSource = new DataSource({
   type: "postgres",
   host: process.env.DB_HOST || "localhost",
@@ -16,6 +21,11 @@ export const AppDataSource = new DataSource({
   logging: false, // Disable in production
   synchronize: true, // Disable in production
   ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: false } : undefined,
+  extra: {
+    ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: false } : undefined,
+    connectionTimeoutMillis: 30000, // 30 seconds
+    idleTimeoutMillis: 30000, // 30 seconds
+  },
 });
 
 export let isInitialized = false;
