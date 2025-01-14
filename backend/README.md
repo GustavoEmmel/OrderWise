@@ -1,7 +1,7 @@
 
 # OrderWise Backend
 
-OrderWise is a backend service designed to manage and process restaurant orders seamlessly. Built with simplicity and scalability in mind, this project relies on **TypeScript**, **Express**, and **TypeORM** as the foundation, with intelligent actions powered by **OpenAI**. Schema validation is implemented using **Zod** for reliability and consistency.
+OrderWise is a backend service designed to manage and process restaurant orders seamlessly. Built with simplicity and scalability in mind, this project relies on **TypeScript**, **Express**, and **TypeORM** as the foundation, with intelligent actions powered by **OpenAI**. Schema validation is implemented using **Zod** for reliability and consistency. Real-time updates are facilitated using **Ably** for WebSocket-based notifications.
 
 ## Features
 
@@ -12,6 +12,7 @@ OrderWise is a backend service designed to manage and process restaurant orders 
 - **Refund Handling**: Processes refund requests with AI-powered input interpretation.
 - **Update Orders**: Supports adding, removing, replacing items, and capturing notes in existing orders with detailed logging and validation.
 - **Schema Validation**: Uses **Zod** to validate input schemas, ensuring data integrity across the application.
+- **Real-Time Notifications**: Sends live updates on order status and interactions using **Ably** for WebSocket support.
 
 ## Tech Stack
 
@@ -30,12 +31,16 @@ OrderWise is a backend service designed to manage and process restaurant orders 
 ### Validation
 - **Zod**: Ensures robust and strict validation of data structures for consistent and error-free inputs.
 
+### Real-Time Notifications
+- **Ably**: Provides WebSocket-based real-time communication for status updates and chat interactions.
+
 ---
 
 ## Project Structure
 
 ```plaintext
 src/
+├── config/          # Database connection
 ├── entities/        # Database models and menu data
 ├── middlewares/     # Middlewares for handling dependency injection
 ├── migrations/      # Migration code that needs to be filled in the database
@@ -70,12 +75,18 @@ Ensure you have the following installed:
      OPENAI_API_KEY=your-openai-api-key
      ```
 
-3. Set up the database:
+3. Set up Ably:
+   - Add your Ably API key to the `.env` file:
+     ```plaintext
+     ABLY_API_KEY=your-ably-api-key
+     ```
+
+4. Set up the database:
    - Ensure Docker is running.
    - Update the `.env` file with your database credentials.
    - When you start the server in development, a Docker container with PostgreSQL will be created, and migrations will run automatically.
 
-4. Start the server:
+5. Start the server:
    ```bash
    npm run dev
    ```
@@ -88,7 +99,7 @@ Ensure you have the following installed:
 2. **AI-Powered Decisions**: Instead of hardcoding logic for every scenario, this backend relies on OpenAI's natural language processing capabilities to dynamically interpret user intent.
 3. **Schema Validation**: Zod ensures that all inputs are validated, reducing the likelihood of errors caused by malformed data.
 4. **Scalable Architecture**: The combination of TypeORM and PostgreSQL allows the system to scale efficiently while maintaining data consistency.
-5. **Real-Time Features**: WebSocket-based notifications for order updates.
+5. **Real-Time Features**: WebSocket-based notifications powered by Ably ensure users receive instant updates on order status and interactions.
 6. **Future Optimizations**: Exploring **Levenshtein Distance** with fine-tuning to reduce the number of OpenAI calls while maintaining high accuracy.
 
 ---
@@ -165,8 +176,9 @@ The `chatAgent` is the core of OrderWise's AI-driven order processing. Below are
 ## Future Enhancements
 
 - **Authentication**: Add user authentication and authorization.
-- **Enhanced AI**: Leverage embeddings or fine-tuned OpenAI models for better context understanding and recommendations.
-- **Integration tests**: Improve the tests to spin up a test database with Docker in order to actual hit the database and endpoints in validate the stored data.
+- **Model Agnostic AI**: Refactor the backend to be model-agnostic and avoid relying solely on GPT-4. Allow for seamless switching between AI models.
+- **AI SDK with Retries**: Implement the [AI SDK from Vercel](https://sdk.vercel.ai/docs/ai-sdk-core/tools-and-tool-calling)
+ to enable retries and ensure reliability in AI responses.
+- **Integration tests**: Improve the tests to spin up a test database with Docker in order to validate the stored data.
 - **Levenshtein Optimizations**: Refine and tune the Levenshtein distance algorithm to improve matching accuracy, reducing dependency on OpenAI for common tasks.
 - **Admin Dashboard**: Create an admin panel for managing menu items, orders, and restaurants.
-

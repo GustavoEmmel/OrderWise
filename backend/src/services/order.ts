@@ -102,9 +102,6 @@ export class OrderService {
 
   async sendRealTimeUpdate() {
     const orders = await this.getAllOrders();
-
-    console.log("Sending real-time update", orders);
-
     await publish("order", "new-order", orders);
   }
 
