@@ -43,8 +43,8 @@ OrderWise is a full-stack application designed to simplify restaurant order mana
 ## Getting Started
 
 ### Prerequisites
-- **Node.js** (>= 14.x)
-- **npm** or **pnpm**
+- **Node.js** (>= 18.x)
+- **npm**
 - **Docker** (optional for local database setup)
 
 ### Installation
@@ -85,7 +85,7 @@ OrderWise is a full-stack application designed to simplify restaurant order mana
    ```bash
    npm install
    ```
-3. Configure `.env.local` in the `frontend` folder:
+3. Configure `.env` in the `frontend` folder:
    ```plaintext
    NEXT_PUBLIC_BACKEND_URL=http://localhost:3000
    NEXT_PUBLIC_ABLY_API_KEY=your-ably-api-key
