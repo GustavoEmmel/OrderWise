@@ -6,6 +6,8 @@ import OrderItem from "./OrderItem";
 export default function Orders() {
   const { orders, isLoading, isError } = useSocketOrders();
 
+  // order by id descending
+  orders?.sort((a, b) => b.id - a.id);
 
   if (isLoading) return <div className="p-6">Loading orders...</div>;
   if (isError) return <div className="p-6">Error loading orders</div>;
