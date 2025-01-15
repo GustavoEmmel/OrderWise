@@ -93,7 +93,19 @@ OrderWise is a full-stack application designed to simplify restaurant order mana
 4. Run the frontend:
    ```bash
    npm run dev
+
    ```
+
+---
+
+## Trade-Offs
+
+During the development of this project, the following trade-offs were made to prioritize the core functionality and showcase AI/LLM interaction:
+
+1. **Static User Management**: Instead of implementing a full user management and authentication system, a static user ID was used. This allowed the focus to remain on exploring AI-driven features.
+2. **Hardcoded Menu Items**: The menu data is hardcoded rather than fetched from external APIs or stored in a database. This approach simplified the demo and emphasized the chatbot's interaction capabilities.
+3. **SaaS for WebSockets**: **Ably** was used as a SaaS provider for WebSockets to explore real-time communication without the complexity of maintaining a custom WebSocket server.
+4. **Database Connection Handling**: Each service class includes an `ensureDatabaseConnection` method to address Vercel's serverless backend limitations. This ensures the database connection remains stable even under serverless constraints.
 
 ---
 
@@ -135,5 +147,7 @@ Here are examples of how users can interact with the **OrderWise** chatbot:
    - Set up automated tests with a test database and endpoint validations.
 5. **Performance Optimization**:
    - Explore caching strategies to reduce database load and improve response times.
+6. **Levenshtein Optimizations**:
+   - Refine and tune the Levenshtein distance algorithm to improve matching accuracy, reducing dependency on OpenAI for common tasks.
 
 
