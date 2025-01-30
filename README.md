@@ -1,4 +1,3 @@
-
 # OrderWise
 
 OrderWise is a full-stack application designed to simplify restaurant order management using AI-powered interactions and real-time updates. The project consists of a **TypeScript/Express** backend and a **Next.js** frontend, with **Ably** used for WebSocket-based real-time updates.
@@ -8,6 +7,7 @@ OrderWise is a full-stack application designed to simplify restaurant order mana
 ## Features
 
 ### Backend
+
 - **AI-Driven Order Management**: Handles complex user interactions for placing, modifying, and querying orders using OpenAI's GPT-4.
 - **Dynamic Menu Support**: Supports multiple restaurants with detailed menu data, including pricing, preparation time, and item tags.
 - **Order Processing**: Enables actions such as adding notes, replacing items, and querying order status.
@@ -15,6 +15,7 @@ OrderWise is a full-stack application designed to simplify restaurant order mana
 - **Schema Validation**: Ensures data consistency with **Zod** validation.
 
 ### Frontend
+
 - **Interactive Chat Interface**: A clean and responsive chat interface powered by **Next.js**, enabling users to interact with the AI backend.
 - **Order Dashboard**: Displays a list of current and past orders with detailed views and action buttons for managing orders.
 - **Real-Time Updates**: Displays live updates for order status and changes using **Ably** WebSockets.
@@ -24,6 +25,7 @@ OrderWise is a full-stack application designed to simplify restaurant order mana
 ## Tech Stack
 
 ### Backend
+
 - **Node.js**: JavaScript runtime for scalable backend applications.
 - **Express**: Minimalist web framework for APIs.
 - **TypeScript**: Enhances type safety and developer productivity.
@@ -33,6 +35,7 @@ OrderWise is a full-stack application designed to simplify restaurant order mana
 - **Zod**: Provides robust schema validation for all inputs and outputs.
 
 ### Frontend
+
 - **Next.js**: React-based framework for server-side rendering and seamless API integrations.
 - **TypeScript**: Ensures type safety and consistency in the frontend code.
 - **Ably**: Real-time messaging service for WebSocket communication with the backend.
@@ -43,6 +46,7 @@ OrderWise is a full-stack application designed to simplify restaurant order mana
 ## Getting Started
 
 ### Prerequisites
+
 - **Node.js** (>= 18.x)
 - **npm**
 - **Docker** (optional for local database setup)
@@ -50,6 +54,7 @@ OrderWise is a full-stack application designed to simplify restaurant order mana
 ### Installation
 
 #### Backend
+
 1. Clone the repository and navigate to the `backend` folder:
    ```bash
    git clone <repository-url>
@@ -77,6 +82,7 @@ OrderWise is a full-stack application designed to simplify restaurant order mana
    ```
 
 #### Frontend
+
 1. Navigate to the `frontend` folder:
    ```bash
    cd frontend
@@ -91,21 +97,11 @@ OrderWise is a full-stack application designed to simplify restaurant order mana
    NEXT_PUBLIC_ABLY_API_KEY=your-ably-api-key
    ```
 4. Run the frontend:
+
    ```bash
    npm run dev
 
    ```
-
----
-
-## Trade-Offs
-
-During the development of this project, the following trade-offs were made to prioritize the core functionality and showcase AI/LLM interaction:
-
-1. **Static User Management**: Instead of implementing a full user management and authentication system, a static user ID was used. This allowed the focus to remain on exploring AI-driven features.
-2. **Hardcoded Menu Items**: The menu data is hardcoded rather than fetched from external APIs or stored in a database. This approach simplified the demo and emphasized the chatbot's interaction capabilities.
-3. **SaaS for WebSockets**: **Ably** was used as a SaaS provider for WebSockets to explore real-time communication without the complexity of maintaining a custom WebSocket server.
-4. **Database Connection Handling**: Each service class includes an `ensureDatabaseConnection` method to address Vercel's serverless backend limitations. This ensures the database connection remains stable even under serverless constraints.
 
 ---
 
@@ -114,40 +110,25 @@ During the development of this project, the following trade-offs were made to pr
 Here are examples of how users can interact with the **OrderWise** chatbot:
 
 ### Placing Orders
+
 - **Prompt**: "I want 2 Big Macs and a Coke without ice."
   - **Response**: "You have 2x Big Mac, 1x Coke (without ice). Would you like to finalize the order?"
 
 ### Modifying Orders
+
 - **Prompt**: "Remove the Coke from my order."
+
   - **Response**: "Your updated order contains: 2x Big Mac. Would you like to finalize the order?"
 
 - **Prompt**: "Add a note to my Big Mac: no pickles."
   - **Response**: "Your updated order contains: 2x Big Mac (no pickles). Would you like to finalize the order?"
 
 ### Querying Order Status
+
 - **Prompt**: "What's the status of my order?"
   - **Response**: "Your order is in progress. It is expected to arrive in approximately 15 minutes."
 
 ### Refund Requests
+
 - **Prompt**: "I want a refund for my last order."
   - **Response**: "Your refund has been processed. Refunded amount: $20."
-
----
-
-## Next Steps
-
-1. **Authentication and Authorization**: Implement user accounts and role-based access control.
-2. **Enhanced AI Model Support**:
-   - Transition to a model-agnostic design to support models beyond GPT-4.
-   - Implement retries and error handling using the [AI SDK from Vercel](https://sdk.vercel.ai/docs/ai-sdk-core/tools-and-tool-calling).
-3. **UI Enhancements**:
-   - Add admin dashboards for managing restaurants, menus, and orders.
-   - Improve responsiveness and accessibility.
-4. **Integration Tests**:
-   - Set up automated tests with a test database and endpoint validations.
-5. **Performance Optimization**:
-   - Explore caching strategies to reduce database load and improve response times.
-6. **Levenshtein Optimizations**:
-   - Refine and tune the Levenshtein distance algorithm to improve matching accuracy, reducing dependency on OpenAI for common tasks.
-
-
