@@ -8,6 +8,7 @@ import {
   groupOrderItems,
   hasSimilarWord,
 } from "../utils/chatAgentHelper";
+import redisClient from "./redis"; // Import Redis client
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
@@ -38,6 +39,17 @@ async function detectIntentAI(userMessage: string): Promise<{
   };
 }> {
   console.log("[DEBUG] Interpreting user intent using AI:", userMessage);
+  const cacheKey = `chat:${userMessage}`;
+
+  // Check if the response is cached
+  const cachedResponse = await redisClient.get(cacheKey);
+  if (cachedResponse) {
+    console.log("[DEBUG] Cache hit for user message:", userMessage);
+    console.log("[DEBUG] Cached response:", cachedResponse);
+    const { interpretation } = JSON.parse(cachedResponse);
+    console.log("[DEBUG] Parsed cached response:", interpretation);
+    return interpretation;
+  }
 
   const systemPrompt = generateSystemPrompt(`
 Understand the user's intent regarding their order. Possible intents include:
@@ -97,6 +109,9 @@ For the recommendation intent, return a JSON object like this:
       },
     };
     console.log("[DEBUG] Normalized intent and details:", interpretation);
+
+    await redisClient.set(cacheKey, JSON.stringify(interpretation), { EX: 86400 }); // 86400 seconds = 1 day
+
     return interpretation;
   } catch (error) {
     console.error("[ERROR] Failed to interpret intent using AI:", error);
@@ -147,6 +162,9 @@ export async function chatAgent(
 
   // Interpret intent using AI
   const { intent, details } = await detectIntentAI(userMessage);
+
+  console.log("[DEBUG] Interpreted intent:", intent);
+  console.log("[DEBUG] Interpreted details:", details);
 
   switch (intent) {
     case "place_order": {

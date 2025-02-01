@@ -13,6 +13,7 @@ import logRouter from "./routes/log";
 import rateLimit from "express-rate-limit";
 import { orderServiceProvider } from "./middlewares/orderServiceProvider";
 import { conversationLogServiceProvider } from "./middlewares/conversationLogServiceProvider";
+import { connectRedis } from "./services/redis"; // Import Redis connection
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -45,6 +46,13 @@ AppDataSource.initialize()
     console.log("Database connected");
   })
   .catch((err) => console.error("Database connection error:", err));
+
+// Initialize Redis
+connectRedis()
+  .then(() => {
+    console.log("Redis connected");
+  })
+  .catch((err) => console.error("Redis connection error:", err));
 
 // Middleware
 app.use(express.json());
