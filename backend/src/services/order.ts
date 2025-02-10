@@ -1,7 +1,6 @@
 import { Repository, In } from "typeorm";
 import { Order, OrderStatus } from "../entities/order";
 import { OrderItem } from "../entities/orderItem";
-import { ensureDatabaseConnection } from "../config/database";
 import { publish } from "./realtime";
 
 /**
@@ -15,11 +14,6 @@ export class OrderService {
   constructor(orderRepository: Repository<Order>, orderItemRepository: Repository<OrderItem>) {
     this.orderRepository = orderRepository;
     this.orderItemRepository = orderItemRepository;
-    this.initialize();
-  }
-
-  private async initialize() {
-    await ensureDatabaseConnection(); // Ensure connection is established once connection was failing in Vercel
   }
 
   /**
@@ -28,8 +22,6 @@ export class OrderService {
    * @returns The open order.
    */
   async getOrCreateOpenOrder(userId: number): Promise<Order> {
-    await ensureDatabaseConnection(); // Ensure connection is established once connection was failing in Vercel
-
     return await this.orderRepository.manager.transaction(async (transactionalEntityManager) => {
       const existingOrder = await this.getUserActiveOrder(userId);
 
@@ -55,8 +47,6 @@ export class OrderService {
       | Omit<OrderItem, "id" | "order" | "createdAt" | "updatedAt">
       | Omit<OrderItem, "id" | "order" | "createdAt" | "updatedAt">[]
   ): Promise<OrderItem | OrderItem[]> {
-    await ensureDatabaseConnection(); // Ensure connection is established once connection was failing in Vercel
-
     const savedOrder = await this.orderRepository.manager.transaction(
       async (transactionalEntityManager) => {
         const order = await this.getOrCreateOpenOrder(userId);
@@ -117,8 +107,6 @@ export class OrderService {
     itemName: string,
     newItemData: Omit<OrderItem, "id" | "order" | "createdAt" | "updatedAt">
   ): Promise<OrderItem | null> {
-    await ensureDatabaseConnection(); // Ensure connection is established once connection was failing in Vercel
-
     const savedItem = await this.orderRepository.manager.transaction(
       async (transactionalEntityManager) => {
         const order = await this.getOrCreateOpenOrder(userId);
@@ -182,8 +170,6 @@ export class OrderService {
    * @returns The updated order.
    */
   async updateOrderStatus(orderId: number, status: OrderStatus): Promise<Order> {
-    await ensureDatabaseConnection(); // Ensure connection is established once connection was failing in Vercel
-
     return await this.orderRepository.manager.transaction(async (transactionalEntityManager) => {
       if (status === OrderStatus.COMPLETED) {
         return transactionalEntityManager.save(Order, {
@@ -208,8 +194,6 @@ export class OrderService {
    * @returns The refunded order.
    */
   async refund(userId: number, reason?: string): Promise<Order> {
-    await ensureDatabaseConnection(); // Ensure connection is established once connection was failing in Vercel
-
     return await this.orderRepository.manager.transaction(async (transactionalEntityManager) => {
       const order = await transactionalEntityManager.findOne(Order, {
         where: {
@@ -249,8 +233,6 @@ export class OrderService {
    * @returns The active order, if any.
    */
   async getUserActiveOrder(userId: number): Promise<Order | null> {
-    await ensureDatabaseConnection(); // Ensure connection is established once connection was failing in Vercel
-
     return await this.orderRepository.findOne({
       where: {
         user: userId,
@@ -266,8 +248,6 @@ export class OrderService {
    * @returns True if an open order with items exists; false otherwise.
    */
   async hasOpenOrderWithItems(userId: number): Promise<boolean> {
-    await ensureDatabaseConnection(); // Ensure connection is established once connection was failing in Vercel
-
     const order = await this.orderRepository.findOne({
       where: {
         user: userId,
@@ -285,8 +265,6 @@ export class OrderService {
    * @returns The closed order.
    */
   async closeOrder(userId: number): Promise<Order> {
-    await ensureDatabaseConnection(); // Ensure connection is established once connection was failing in Vercel
-
     const savedOrder = await this.orderRepository.manager.transaction(
       async (transactionalEntityManager) => {
         const order = await transactionalEntityManager.findOne(Order, {
@@ -331,8 +309,6 @@ export class OrderService {
    * @returns All orders.
    */
   async getAllOrders(): Promise<Order[]> {
-    await ensureDatabaseConnection(); // Ensure connection is established once connection was failing in Vercel
-
     return await this.orderRepository.find({
       relations: ["user", "orderItems"],
     });

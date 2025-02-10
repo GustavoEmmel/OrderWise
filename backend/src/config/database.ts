@@ -22,18 +22,3 @@ export const AppDataSource = new DataSource({
     idleTimeoutMillis: 60000, // 60 seconds
   },
 });
-
-let isConnected = false;
-
-export async function ensureDatabaseConnection(): Promise<void> {
-  if (!AppDataSource.isInitialized && !isConnected) {
-    try {
-      await AppDataSource.initialize();
-      console.log("Database connected");
-      isConnected = true;
-    } catch (err) {
-      console.error("Error initializing database connection:", err);
-      throw err;
-    }
-  }
-}
